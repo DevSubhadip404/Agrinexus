@@ -3,6 +3,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.firebase import db
+
 
 router = APIRouter(
     prefix="/api/farms",
@@ -26,11 +28,15 @@ class FarmCreate(BaseModel):
     soil: SoilData
 
 
-farms = []
-
-
 @router.get("")
 def get_farms():
+    farm_documents = db.collection("farms").stream()
+
+    farms = []
+
+    for document in farm_documents:
+        farms.append(document.to_dict())
+
     return {
         "farms": farms,
     }
@@ -38,20 +44,27 @@ def get_farms():
 
 @router.get("/{farm_id}")
 def get_farm(farm_id: str):
-    for farm in farms:
-        if farm["farm_id"] == farm_id:
-            return farm
-
-    raise HTTPException(
-        status_code=404,
-        detail="Farm not found",
+    document = (
+        db.collection("farms")
+        .document(farm_id)
+        .get()
     )
+
+    if not document.exists:
+        raise HTTPException(
+            status_code=404,
+            detail="Farm not found",
+        )
+
+    return document.to_dict()
 
 
 @router.post("")
 def create_farm(farm: FarmCreate):
+    farm_id = str(uuid4())
+
     new_farm = {
-        "farm_id": str(uuid4()),
+        "farm_id": farm_id,
         "crop": farm.crop,
         "area_acres": farm.area_acres,
         "latitude": farm.latitude,
@@ -65,7 +78,11 @@ def create_farm(farm: FarmCreate):
         },
     }
 
-    farms.append(new_farm)
+    (
+        db.collection("farms")
+        .document(farm_id)
+        .set(new_farm)
+    )
 
     return {
         "success": True,

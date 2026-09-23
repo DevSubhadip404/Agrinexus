@@ -1,10 +1,30 @@
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
-import { getFarms } from "../services/mockFarmService"
+import { getFarms } from "../services/farmService"
+import type { Farm } from "../services/mockFarmService"
 
 function DashboardPage() {
-  const farms = getFarms()
+  const [farms, setFarms] = useState<Farm[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    async function loadFarms() {
+      try {
+        const data = await getFarms()
+        setFarms(data)
+      } catch (err) {
+        console.error(err)
+        setError("Could not load farms.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFarms()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,6 +145,30 @@ function DashboardPage() {
                 {farms.length} farms
               </span>
             </div>
+
+            {loading && (
+              <p className="mt-6 text-sm text-gray-500">
+                Loading farms...
+              </p>
+            )}
+
+            {error && (
+              <p className="mt-6 text-sm font-medium text-red-600">
+                {error}
+              </p>
+            )}
+
+            {!loading && !error && farms.length === 0 && (
+              <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
+                <p className="font-semibold text-gray-900">
+                  No farms yet
+                </p>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  Add your first farm to begin analysis.
+                </p>
+              </div>
+            )}
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
               {farms.map((farm) => (

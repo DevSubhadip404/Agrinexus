@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
-import { createFarm } from "../services/mockFarmService"
+import { createFarm } from "../services/farmService"
 
 function AddFarmPage() {
   const navigate = useNavigate()
@@ -19,30 +19,42 @@ function AddFarmPage() {
   const [moisture, setMoisture] = useState("Medium")
 
   const [message, setMessage] = useState("")
+  const [creating, setCreating] = useState(false)
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    const newFarm = createFarm({
-      crop,
-      area_acres: Number(area),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+    setCreating(true)
+    setMessage("Creating farm...")
 
-      soil: {
-        ph: Number(ph),
-        nitrogen,
-        phosphorus,
-        potassium,
-        moisture,
-      },
-    })
+    try {
+      const newFarm = await createFarm({
+        crop,
+        area_acres: Number(area),
+        latitude: Number(latitude),
+        longitude: Number(longitude),
 
-    setMessage("Farm created successfully.")
+        soil: {
+          ph: Number(ph),
+          nitrogen,
+          phosphorus,
+          potassium,
+          moisture,
+        },
+      })
 
-    setTimeout(() => {
+      setMessage("Farm created successfully.")
+
       navigate(`/farm/${newFarm.farm_id}`)
-    }, 500)
+    } catch (error) {
+      console.error(error)
+
+      setMessage(
+        "Could not create farm. Please check the backend connection."
+      )
+    } finally {
+      setCreating(false)
+    }
   }
 
   return (
@@ -63,7 +75,10 @@ function AddFarmPage() {
             Enter your farm and soil details.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="mt-8 space-y-6"
+          >
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Crop
@@ -71,7 +86,9 @@ function AddFarmPage() {
 
               <input
                 value={crop}
-                onChange={(event) => setCrop(event.target.value)}
+                onChange={(event) =>
+                  setCrop(event.target.value)
+                }
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 required
               />
@@ -87,7 +104,9 @@ function AddFarmPage() {
                 min="0.1"
                 step="0.1"
                 value={area}
-                onChange={(event) => setArea(event.target.value)}
+                onChange={(event) =>
+                  setArea(event.target.value)
+                }
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 required
               />
@@ -103,7 +122,9 @@ function AddFarmPage() {
                   type="number"
                   step="any"
                   value={latitude}
-                  onChange={(event) => setLatitude(event.target.value)}
+                  onChange={(event) =>
+                    setLatitude(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                   required
                 />
@@ -118,7 +139,9 @@ function AddFarmPage() {
                   type="number"
                   step="any"
                   value={longitude}
-                  onChange={(event) => setLongitude(event.target.value)}
+                  onChange={(event) =>
+                    setLongitude(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                   required
                 />
@@ -146,7 +169,9 @@ function AddFarmPage() {
                 max="14"
                 step="0.1"
                 value={ph}
-                onChange={(event) => setPh(event.target.value)}
+                onChange={(event) =>
+                  setPh(event.target.value)
+                }
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 required
               />
@@ -160,7 +185,9 @@ function AddFarmPage() {
 
                 <select
                   value={nitrogen}
-                  onChange={(event) => setNitrogen(event.target.value)}
+                  onChange={(event) =>
+                    setNitrogen(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 >
                   <option value="Low">Low</option>
@@ -176,7 +203,9 @@ function AddFarmPage() {
 
                 <select
                   value={phosphorus}
-                  onChange={(event) => setPhosphorus(event.target.value)}
+                  onChange={(event) =>
+                    setPhosphorus(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 >
                   <option value="Low">Low</option>
@@ -194,7 +223,9 @@ function AddFarmPage() {
 
                 <select
                   value={potassium}
-                  onChange={(event) => setPotassium(event.target.value)}
+                  onChange={(event) =>
+                    setPotassium(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 >
                   <option value="Low">Low</option>
@@ -210,7 +241,9 @@ function AddFarmPage() {
 
                 <select
                   value={moisture}
-                  onChange={(event) => setMoisture(event.target.value)}
+                  onChange={(event) =>
+                    setMoisture(event.target.value)
+                  }
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
                 >
                   <option value="Low">Low</option>
@@ -222,14 +255,15 @@ function AddFarmPage() {
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
+              disabled={creating}
+              className="w-full rounded-xl bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Create Farm
+              {creating ? "Creating Farm..." : "Create Farm"}
             </button>
           </form>
 
           {message && (
-            <p className="mt-5 text-sm font-medium text-green-700">
+            <p className="mt-5 text-sm font-medium text-gray-700">
               {message}
             </p>
           )}

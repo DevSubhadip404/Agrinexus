@@ -1,22 +1,64 @@
+import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
-import { getFarmById } from "../services/mockFarmService"
+import { getFarmById } from "../services/farmService"
+import type { Farm } from "../services/mockFarmService"
 
 function FarmPage() {
   const { farmId } = useParams()
 
-  const farm = farmId
-    ? getFarmById(farmId)
-    : undefined
+  const [farm, setFarm] = useState<Farm | undefined>()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  if (!farm) {
+  useEffect(() => {
+    async function loadFarm() {
+      if (!farmId) {
+        setError("Farm not found.")
+        setLoading(false)
+        return
+      }
+
+      try {
+        const data = await getFarmById(farmId)
+
+        if (!data) {
+          setError("Farm not found.")
+          return
+        }
+
+        setFarm(data)
+      } catch (err) {
+        console.error(err)
+        setError("Could not load farm.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFarm()
+  }, [farmId])
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <div className="p-10">
-          Farm not found.
+        <div className="p-10 text-gray-500">
+          Loading farm...
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !farm) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+
+        <div className="p-10 text-red-600">
+          {error || "Farm not found."}
         </div>
       </div>
     )

@@ -1,25 +1,66 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
-import { getFarmById } from "../services/mockFarmService"
+import { getFarmById } from "../services/farmService"
 import { getFieldSignals } from "../services/mockSignalService"
+import type { Farm } from "../services/mockFarmService"
 
 function AnalysisPage() {
   const { farmId } = useParams()
+
+  const [farm, setFarm] = useState<Farm | undefined>()
   const [language, setLanguage] = useState("en")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const farm = farmId
-    ? getFarmById(farmId)
-    : undefined
+  useEffect(() => {
+    async function loadFarm() {
+      if (!farmId) {
+        setError("Farm not found.")
+        setLoading(false)
+        return
+      }
 
-  if (!farm) {
+      try {
+        const data = await getFarmById(farmId)
+
+        if (!data) {
+          setError("Farm not found.")
+          return
+        }
+
+        setFarm(data)
+      } catch (err) {
+        console.error(err)
+        setError("Could not load farm analysis.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFarm()
+  }, [farmId])
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
-        <div className="p-10">
-          Analysis not found.
+        <div className="p-10 text-gray-500">
+          Loading analysis...
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !farm) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+
+        <div className="p-10 text-red-600">
+          {error || "Analysis not found."}
         </div>
       </div>
     )
@@ -284,54 +325,6 @@ function AnalysisPage() {
 
           <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900">
-              Field Signals
-            </h2>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl bg-gray-50 p-5">
-                <p className="text-sm text-gray-500">
-                  Soil pH
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {farm.soil.ph}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-gray-50 p-5">
-                <p className="text-sm text-gray-500">
-                  Nitrogen
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {farm.soil.nitrogen}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-gray-50 p-5">
-                <p className="text-sm text-gray-500">
-                  Temperature
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {signals.weather.temperature}°C
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-gray-50 p-5">
-                <p className="text-sm text-gray-500">
-                  Humidity
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {signals.weather.humidity}%
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900">
               Regenerative Recommendations
             </h2>
 
@@ -367,20 +360,14 @@ function AnalysisPage() {
 
               <select
                 value={language}
-                onChange={(event) => setLanguage(event.target.value)}
+                onChange={(event) =>
+                  setLanguage(event.target.value)
+                }
                 className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-900"
               >
-                <option value="en">
-                  English
-                </option>
-
-                <option value="hi">
-                  हिन्दी
-                </option>
-
-                <option value="te">
-                  తెలుగు
-                </option>
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="te">తెలుగు</option>
               </select>
             </div>
 

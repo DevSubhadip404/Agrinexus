@@ -1,66 +1,132 @@
-import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
-const API_BASE_URL = "http://10.124.251.50:8000"
-
-type Farm = {
-  farm_id: string
-  crop: string
-  area_acres: number
-  latitude: number
-  longitude: number
-}
+import Navbar from "../components/Navbar"
+import { getFarms } from "../services/mockFarmService"
 
 function DashboardPage() {
-  const [farms, setFarms] = useState<Farm[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function loadFarms() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/farms`)
-        const data = await response.json()
-
-        setFarms(data.farms)
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadFarms()
-  }, [])
+  const farms = getFarms()
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold tracking-widest text-green-700">
-              AGRINEXUS
-            </p>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
 
-            <h1 className="mt-2 text-3xl font-bold text-gray-900">
-              Farm Dashboard
-            </h1>
+      <div className="px-6 py-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold tracking-widest text-green-700">
+                AGRINEXUS
+              </p>
+
+              <h1 className="mt-2 text-3xl font-bold text-gray-900">
+                Farm Dashboard
+              </h1>
+
+              <p className="mt-2 text-gray-600">
+                Monitor farms, analyze field conditions, and access AI-powered
+                agricultural intelligence.
+              </p>
+            </div>
+
+            <Link
+              to="/add-farm"
+              className="rounded-xl bg-green-700 px-5 py-3 text-center font-semibold text-white hover:bg-green-800"
+            >
+              Add Farm
+            </Link>
           </div>
 
-          <Link
-            to="/add-farm"
-            className="rounded-xl bg-green-700 px-5 py-3 font-semibold text-white"
-          >
-            Add Farm
-          </Link>
-        </div>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Total Farms
+              </p>
 
-        <div className="mt-10">
-          {loading ? (
-            <p>Loading farms...</p>
-          ) : farms.length === 0 ? (
-            <p>No farms added yet.</p>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2">
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {farms.length}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Average Health
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-green-700">
+                76%
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Active Alerts
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-yellow-600">
+                2
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Shared Models
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-blue-600">
+                27
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            <Link
+              to="/crop-doctor"
+              className="rounded-2xl bg-green-900 p-6 text-white shadow-sm hover:bg-green-800"
+            >
+              <p className="text-sm font-semibold tracking-widest text-green-200">
+                CROP DOCTOR
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Diagnose crop issues
+              </h2>
+
+              <p className="mt-2 text-sm text-green-100">
+                Upload a crop image and receive an AI-assisted diagnosis.
+              </p>
+            </Link>
+
+            <Link
+              to="/agrin-commons"
+              className="rounded-2xl bg-white p-6 shadow-sm hover:bg-green-50"
+            >
+              <p className="text-sm font-semibold tracking-widest text-green-700">
+                AGRIN OPEN
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold text-gray-900">
+                Explore AgriN Commons
+              </h2>
+
+              <p className="mt-2 text-sm text-gray-600">
+                Discover shared agricultural datasets and AI models across
+                participating nodes.
+              </p>
+            </Link>
+          </div>
+
+          <div className="mt-10">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">
+                My Farms
+              </h2>
+
+              <span className="text-sm text-gray-500">
+                {farms.length} farms
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
               {farms.map((farm) => (
                 <div
                   key={farm.farm_id}
@@ -70,9 +136,9 @@ function DashboardPage() {
                     {farm.crop}
                   </p>
 
-                  <h2 className="mt-2 text-xl font-bold">
+                  <h3 className="mt-2 text-xl font-bold text-gray-900">
                     {farm.area_acres} acres
-                  </h2>
+                  </h3>
 
                   <p className="mt-3 text-sm text-gray-600">
                     {farm.latitude}, {farm.longitude}
@@ -87,7 +153,7 @@ function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

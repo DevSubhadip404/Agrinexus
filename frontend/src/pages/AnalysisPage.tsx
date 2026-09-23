@@ -4,18 +4,25 @@ import { Link, useParams } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import { getFarmById } from "../services/farmService"
 import { getFieldSignals } from "../services/mockSignalService"
+import {
+  getFarmWeather,
+  type WeatherData,
+} from "../services/weatherService"
 import type { Farm } from "../services/mockFarmService"
 
 function AnalysisPage() {
   const { farmId } = useParams()
 
   const [farm, setFarm] = useState<Farm | undefined>()
+  const [weather, setWeather] = useState<WeatherData | null>(null)
+
   const [language, setLanguage] = useState("en")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [weatherFallback, setWeatherFallback] = useState(false)
 
   useEffect(() => {
-    async function loadFarm() {
+    async function loadAnalysis() {
       if (!farmId) {
         setError("Farm not found.")
         setLoading(false)
@@ -23,14 +30,22 @@ function AnalysisPage() {
       }
 
       try {
-        const data = await getFarmById(farmId)
+        const farmData = await getFarmById(farmId)
 
-        if (!data) {
+        if (!farmData) {
           setError("Farm not found.")
           return
         }
 
-        setFarm(data)
+        setFarm(farmData)
+
+        try {
+          const weatherData = await getFarmWeather(farmId)
+          setWeather(weatherData)
+        } catch (weatherError) {
+          console.error(weatherError)
+          setWeatherFallback(true)
+        }
       } catch (err) {
         console.error(err)
         setError("Could not load farm analysis.")
@@ -39,7 +54,7 @@ function AnalysisPage() {
       }
     }
 
-    loadFarm()
+    loadAnalysis()
   }, [farmId])
 
   if (loading) {
@@ -48,7 +63,7 @@ function AnalysisPage() {
         <Navbar />
 
         <div className="p-10 text-gray-500">
-          Loading analysis...
+          Loading farm intelligence...
         </div>
       </div>
     )
@@ -66,10 +81,28 @@ function AnalysisPage() {
     )
   }
 
-  const signals = getFieldSignals(
+  const mockSignals = getFieldSignals(
     farm.latitude,
     farm.longitude
   )
+
+  const satellite = mockSignals.satellite
+
+  const temperature =
+    weather?.temperature ??
+    mockSignals.weather.temperature
+
+  const humidity =
+    weather?.humidity ??
+    mockSignals.weather.humidity
+
+  const rainProbability =
+    weather?.rain_probability ??
+    mockSignals.weather.rainProbability
+
+  const rainfallForecastMm =
+    weather?.rainfall_forecast_mm ??
+    mockSignals.weather.rainfallForecastMm
 
   const recommendations = []
 
@@ -113,53 +146,55 @@ function AnalysisPage() {
     })
   }
 
-  if (signals.weather.rainProbability >= 60) {
+  if (rainProbability >= 60) {
     recommendations.push({
-      type: "Weather Advisory",
+      type: "Live Weather Advisory",
       message:
-        `Rain probability is ${signals.weather.rainProbability}%. Consider delaying irrigation until the forecast is reassessed.`,
+        `Rain probability is ${rainProbability}%. Consider delaying irrigation and reassessing after rainfall.`,
     })
   } else {
     recommendations.push({
-      type: "Weather Advisory",
+      type: "Live Weather Advisory",
       message:
-        `Rain probability is only ${signals.weather.rainProbability}%. Monitor soil moisture before the next irrigation cycle.`,
+        `Rain probability is ${rainProbability}%. Monitor soil moisture before the next irrigation cycle.`,
     })
   }
 
-  if (signals.satellite.ndvi < 0.65) {
+  if (satellite.ndvi < 0.65) {
     recommendations.push({
       type: "Satellite Alert",
       message:
-        "Satellite vegetation signals suggest possible crop stress. Inspect the field for nutrient, moisture, or disease issues.",
+        "Vegetation signals suggest possible crop stress. Inspect the field for nutrient, moisture, or disease problems.",
     })
   }
 
   recommendations.push({
     type: "Regenerative Practice",
     message:
-      "Use crop rotation, residue retention, and cover crops where suitable to improve long-term soil health.",
+      "Use crop rotation, residue retention, and suitable cover crops to improve long-term soil health.",
   })
 
   const diseaseRisk =
-    signals.weather.humidity >= 72 ||
+    humidity >= 72 ||
     farm.soil.moisture === "High"
       ? "High"
-      : signals.weather.humidity >= 65
+      : humidity >= 65
         ? "Medium"
         : "Low"
 
   const confidence =
-    signals.satellite.ndvi >= 0.65
-      ? 87
-      : 79
+    weather && satellite.ndvi >= 0.65
+      ? 91
+      : weather
+        ? 86
+        : 78
 
   const explanations = {
-    en: `Your ${farm.crop} farm has an NDVI of ${signals.satellite.ndvi} and an estimated vegetation health score of ${signals.satellite.vegetationHealth}%. Current temperature is ${signals.weather.temperature}°C with ${signals.weather.humidity}% humidity. Rain probability is ${signals.weather.rainProbability}%. Soil pH is ${farm.soil.ph} and nitrogen is ${farm.soil.nitrogen.toLowerCase()}. AgriNexus combines these field signals to generate regenerative recommendations.`,
+    en: `Your ${farm.crop} farm currently has an NDVI of ${satellite.ndvi} and an estimated vegetation health score of ${satellite.vegetationHealth}%. Live weather shows ${temperature}°C temperature, ${humidity}% humidity, and a ${rainProbability}% chance of rain. Soil pH is ${farm.soil.ph} and nitrogen is ${farm.soil.nitrogen.toLowerCase()}. AgriNexus combines these signals to generate regenerative recommendations.`,
 
-    hi: `आपके ${farm.crop} खेत का NDVI ${signals.satellite.ndvi} है और अनुमानित वनस्पति स्वास्थ्य स्कोर ${signals.satellite.vegetationHealth}% है। वर्तमान तापमान ${signals.weather.temperature}°C और आर्द्रता ${signals.weather.humidity}% है। बारिश की संभावना ${signals.weather.rainProbability}% है। मिट्टी का pH ${farm.soil.ph} है और नाइट्रोजन स्तर ${farm.soil.nitrogen} है। AgriNexus इन संकेतों को मिलाकर पुनर्योजी कृषि सुझाव देता है।`,
+    hi: `आपके ${farm.crop} खेत का NDVI ${satellite.ndvi} है और अनुमानित वनस्पति स्वास्थ्य स्कोर ${satellite.vegetationHealth}% है। लाइव मौसम के अनुसार तापमान ${temperature}°C, आर्द्रता ${humidity}% और बारिश की संभावना ${rainProbability}% है। मिट्टी का pH ${farm.soil.ph} है और नाइट्रोजन स्तर ${farm.soil.nitrogen} है। AgriNexus इन संकेतों को मिलाकर पुनर्योजी कृषि सुझाव देता है।`,
 
-    te: `మీ ${farm.crop} పొలానికి NDVI ${signals.satellite.ndvi} మరియు అంచనా వృక్ష ఆరోగ్య స్కోర్ ${signals.satellite.vegetationHealth}% ఉంది. ప్రస్తుతం ఉష్ణోగ్రత ${signals.weather.temperature}°C మరియు తేమ ${signals.weather.humidity}% ఉంది. వర్షం పడే అవకాశం ${signals.weather.rainProbability}%. నేల pH ${farm.soil.ph}, నైట్రోజన్ స్థాయి ${farm.soil.nitrogen}. AgriNexus ఈ సంకేతాలను కలిపి పునరుత్పాదక వ్యవసాయ సూచనలు అందిస్తుంది.`,
+    te: `మీ ${farm.crop} పొలానికి NDVI ${satellite.ndvi} మరియు అంచనా వృక్ష ఆరోగ్య స్కోర్ ${satellite.vegetationHealth}% ఉంది. ప్రత్యక్ష వాతావరణ సమాచారం ప్రకారం ఉష్ణోగ్రత ${temperature}°C, తేమ ${humidity}% మరియు వర్షం పడే అవకాశం ${rainProbability}% ఉంది. నేల pH ${farm.soil.ph}, నైట్రోజన్ స్థాయి ${farm.soil.nitrogen}. AgriNexus ఈ సంకేతాలను కలిపి పునరుత్పాదక వ్యవసాయ సూచనలు అందిస్తుంది.`,
   }
 
   return (
@@ -185,9 +220,16 @@ function AnalysisPage() {
             </h1>
 
             <p className="mt-2 text-gray-600">
-              Satellite, weather, soil, and regenerative intelligence for this field.
+              Live weather, soil, satellite signals, and regenerative intelligence.
             </p>
           </div>
+
+          {weatherFallback && (
+            <div className="mt-6 rounded-xl bg-yellow-50 p-4 text-sm text-yellow-800">
+              Live weather is temporarily unavailable. AgriNexus is using
+              fallback demo weather data.
+            </div>
+          )}
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -196,11 +238,11 @@ function AnalysisPage() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-green-700">
-                {signals.satellite.vegetationHealth}%
+                {satellite.vegetationHealth}%
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
-                NDVI: {signals.satellite.ndvi}
+                NDVI: {satellite.ndvi}
               </p>
             </div>
 
@@ -210,7 +252,7 @@ function AnalysisPage() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-600">
-                {signals.satellite.ndmi}
+                {satellite.ndmi}
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
@@ -220,15 +262,15 @@ function AnalysisPage() {
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
-                Rain Probability
+                Live Rain Probability
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-600">
-                {signals.weather.rainProbability}%
+                {rainProbability}%
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
-                {signals.weather.rainfallForecastMm} mm forecast
+                {rainfallForecastMm} mm forecast
               </p>
             </div>
 
@@ -242,7 +284,7 @@ function AnalysisPage() {
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
-                {signals.weather.temperature}°C · {signals.weather.humidity}% humidity
+                {temperature}°C · {humidity}% humidity
               </p>
             </div>
           </div>
@@ -274,8 +316,8 @@ function AnalysisPage() {
                   NDVI and NDMI vegetation signals.
                 </p>
 
-                <p className="mt-3 text-xs font-semibold uppercase text-green-700">
-                  Connected
+                <p className="mt-3 text-xs font-semibold uppercase text-yellow-700">
+                  Prototype
                 </p>
               </div>
 
@@ -285,11 +327,19 @@ function AnalysisPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
-                  Rainfall, temperature, and humidity.
+                  Live temperature, humidity, and rainfall forecast.
                 </p>
 
-                <p className="mt-3 text-xs font-semibold uppercase text-green-700">
-                  Connected
+                <p
+                  className={`mt-3 text-xs font-semibold uppercase ${
+                    weather
+                      ? "text-green-700"
+                      : "text-yellow-700"
+                  }`}
+                >
+                  {weather
+                    ? `Live · ${weather.source}`
+                    : "Fallback"}
                 </p>
               </div>
 
@@ -299,7 +349,7 @@ function AnalysisPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
-                  pH, nutrients, and moisture.
+                  pH, nutrients, and moisture stored in Firestore.
                 </p>
 
                 <p className="mt-3 text-xs font-semibold uppercase text-green-700">
@@ -365,9 +415,17 @@ function AnalysisPage() {
                 }
                 className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-900"
               >
-                <option value="en">English</option>
-                <option value="hi">हिन्दी</option>
-                <option value="te">తెలుగు</option>
+                <option value="en">
+                  English
+                </option>
+
+                <option value="hi">
+                  हिन्दी
+                </option>
+
+                <option value="te">
+                  తెలుగు
+                </option>
               </select>
             </div>
 
@@ -376,8 +434,8 @@ function AnalysisPage() {
             </p>
 
             <p className="mt-5 text-xs text-green-200">
-              Prototype data for now. Real satellite, weather, and AI services
-              will replace the mock providers during backend integration.
+              Weather is live. Satellite and AI explanation layers are still
+              prototype components and will be replaced by real integrations.
             </p>
           </div>
         </div>

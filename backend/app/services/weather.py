@@ -14,7 +14,7 @@ MET_NORWAY_URL = (
 MET_NORWAY_HEADERS = {
     "User-Agent": (
         "AgriNexus/1.0 "
-        "https://agrinexus-alpha.vercel.app"
+        "https://agrinexus-astrael.vercel.app"
     )
 }
 

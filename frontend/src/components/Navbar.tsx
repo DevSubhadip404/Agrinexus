@@ -1,9 +1,29 @@
 import { useState } from "react"
-import { Link, NavLink } from "react-router-dom"
+import {
+  Link,
+  NavLink,
+  useNavigate,
+} from "react-router-dom"
+
+import { useAuth } from "../context/AuthContext"
+import { signOutUser } from "../services/authService"
 
 
 function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] =
+    useState(false)
+
+  const [signingOut, setSigningOut] =
+    useState(false)
+
+  const {
+    user,
+    isGuest,
+    endGuestSession,
+  } = useAuth()
+
+  const navigate = useNavigate()
+
 
   const navLinkClass = ({
     isActive,
@@ -15,6 +35,28 @@ function Navbar() {
         ? "bg-green-50 text-green-700"
         : "text-gray-700 hover:bg-gray-50 hover:text-green-700"
     }`
+
+
+  async function handleSignOut() {
+    setSigningOut(true)
+
+    try {
+      if (isGuest) {
+        endGuestSession()
+      }
+
+      await signOutUser()
+
+      setMenuOpen(false)
+
+      navigate(
+        "/login",
+        { replace: true }
+      )
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
 
   return (
@@ -43,7 +85,9 @@ function Navbar() {
 
           <button
             type="button"
-            onClick={() => setMenuOpen(true)}
+            onClick={() =>
+              setMenuOpen(true)
+            }
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-700 transition hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             aria-label="Open navigation menu"
           >
@@ -70,9 +114,12 @@ function Navbar() {
           <button
             type="button"
             aria-label="Close navigation menu"
-            onClick={() => setMenuOpen(false)}
+            onClick={() =>
+              setMenuOpen(false)
+            }
             className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
           />
+
 
           <aside className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
@@ -92,9 +139,12 @@ function Navbar() {
                 </p>
               </div>
 
+
               <button
                 type="button"
-                onClick={() => setMenuOpen(false)}
+                onClick={() =>
+                  setMenuOpen(false)
+                }
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
                 aria-label="Close navigation menu"
               >
@@ -114,31 +164,85 @@ function Navbar() {
             </div>
 
 
+            {user && (
+              <div className="border-b border-gray-100 px-6 py-5">
+                {isGuest ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-amber-400" />
+
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+                        Guest session
+                      </p>
+                    </div>
+
+                    <p className="mt-3 text-sm font-bold text-gray-900">
+                      Temporary access
+                    </p>
+
+                    <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
+                      Farms are stored only for this
+                      browser session and are not saved
+                      to an account.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+                      Signed in as
+                    </p>
+
+                    <p className="mt-2 truncate text-sm font-bold text-gray-900">
+                      {user.displayName ||
+                        "AgriNexus Farmer"}
+                    </p>
+
+                    {user.email && (
+                      <p className="mt-1 truncate text-xs text-gray-500">
+                        {user.email}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+
             <div className="flex-1 px-4 py-6">
               <nav className="space-y-2">
                 <NavLink
                   to="/dashboard"
                   end
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() =>
+                    setMenuOpen(false)
+                  }
                   className={navLinkClass}
                 >
                   <div>
-                    <p>Dashboard</p>
+                    <p>
+                      Dashboard
+                    </p>
 
                     <p className="mt-1 text-xs font-normal text-gray-500">
-                      Farms, alerts, and agricultural intelligence
+                      Farms, alerts, and agricultural
+                      intelligence
                     </p>
                   </div>
                 </NavLink>
 
+
                 <NavLink
                   to="/crop-doctor"
                   end
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() =>
+                    setMenuOpen(false)
+                  }
                   className={navLinkClass}
                 >
                   <div>
-                    <p>Crop Doctor</p>
+                    <p>
+                      Crop Doctor
+                    </p>
 
                     <p className="mt-1 text-xs font-normal text-gray-500">
                       AI-assisted crop image diagnosis
@@ -146,17 +250,23 @@ function Navbar() {
                   </div>
                 </NavLink>
 
+
                 <NavLink
                   to="/agrin-commons"
                   end
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() =>
+                    setMenuOpen(false)
+                  }
                   className={navLinkClass}
                 >
                   <div>
-                    <p>AgriN Commons</p>
+                    <p>
+                      AgriN Commons
+                    </p>
 
                     <p className="mt-1 text-xs font-normal text-gray-500">
-                      Models, nodes, and cross-country exchange
+                      Models, nodes, and cross-country
+                      exchange
                     </p>
                   </div>
                 </NavLink>
@@ -164,11 +274,35 @@ function Navbar() {
             </div>
 
 
-            <div className="border-t border-gray-200 p-6">
+            <div className="space-y-4 border-t border-gray-200 p-6">
+              {user && (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isGuest
+                      ? "border-amber-100 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                      : "border-red-100 bg-red-50 text-red-700 hover:bg-red-100"
+                  }`}
+                >
+                  {signingOut
+                    ? isGuest
+                      ? "Ending session..."
+                      : "Signing out..."
+                    : isGuest
+                      ? "End Guest Session"
+                      : "Sign out"}
+                </button>
+              )}
+
+
               <Link
                 to="/"
-                onClick={() => setMenuOpen(false)}
-                className="text-sm font-semibold text-green-700 transition hover:text-green-800"
+                onClick={() =>
+                  setMenuOpen(false)
+                }
+                className="block text-center text-sm font-semibold text-green-700 transition hover:text-green-800"
               >
                 ← Back to AgriNexus home
               </Link>

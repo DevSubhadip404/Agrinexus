@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import get_current_user
 from app.firebase import db
 from app.services.satellite import get_satellite_signals
 
@@ -11,8 +12,15 @@ router = APIRouter(
 
 
 @router.get("/{farm_id}/satellite")
-def get_farm_satellite(farm_id: str):
-    document = db.collection("farms").document(farm_id).get()
+def get_farm_satellite(
+    farm_id: str,
+    current_user=Depends(get_current_user),
+):
+    document = (
+        db.collection("farms")
+        .document(farm_id)
+        .get()
+    )
 
     if not document.exists:
         raise HTTPException(
@@ -21,6 +29,12 @@ def get_farm_satellite(farm_id: str):
         )
 
     farm = document.to_dict()
+
+    if farm.get("owner_uid") != current_user["uid"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Farm not found",
+        )
 
     latitude = farm.get("latitude")
     longitude = farm.get("longitude")
@@ -36,8 +50,12 @@ def get_farm_satellite(farm_id: str):
             latitude=latitude,
             longitude=longitude,
         )
+
     except Exception as error:
-        print("Satellite service error:", error)
+        print(
+            "Satellite service error:",
+            error,
+        )
 
         raise HTTPException(
             status_code=502,

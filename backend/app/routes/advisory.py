@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 import requests
 
+from app.auth import get_current_user
 from app.firebase import db
 from app.services.gemini import generate_farm_explanation
 from app.services.satellite import get_satellite_signals
@@ -17,8 +18,13 @@ router = APIRouter(
 def get_farm_explanation(
     farm_id: str,
     language: str = Query(default="English"),
+    current_user=Depends(get_current_user),
 ):
-    document = db.collection("farms").document(farm_id).get()
+    document = (
+        db.collection("farms")
+        .document(farm_id)
+        .get()
+    )
 
     if not document.exists:
         raise HTTPException(
@@ -27,6 +33,12 @@ def get_farm_explanation(
         )
 
     farm = document.to_dict()
+
+    if farm.get("owner_uid") != current_user["uid"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Farm not found",
+        )
 
     try:
         weather = get_weather(
@@ -80,8 +92,12 @@ def get_farm_explanation(
             ),
             language=language,
         )
+
     except Exception as error:
-        print("Gemini advisory error:", error)
+        print(
+            "Gemini advisory error:",
+            error,
+        )
 
         raise HTTPException(
             status_code=502,
@@ -137,7 +153,9 @@ def get_farm_explanation(
         provenance.append(
             {
                 "source": "Sentinel-2",
-                "data": "No usable recent observation available",
+                "data": (
+                    "No usable recent observation available"
+                ),
                 "status": "Unavailable",
             }
         )

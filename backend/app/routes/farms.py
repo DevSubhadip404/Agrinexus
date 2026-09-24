@@ -1,8 +1,10 @@
+from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
+from app.auth import get_current_user
 from app.firebase import db
 
 
@@ -12,30 +14,70 @@ router = APIRouter(
 )
 
 
+Level = Literal[
+    "Low",
+    "Medium",
+    "High",
+]
+
+
 class SoilData(BaseModel):
-    ph: float
-    nitrogen: str
-    phosphorus: str
-    potassium: str
-    moisture: str
+    ph: float = Field(
+        ge=0,
+        le=14,
+    )
+
+    nitrogen: Level
+    phosphorus: Level
+    potassium: Level
+    moisture: Level
 
 
 class FarmCreate(BaseModel):
-    crop: str
-    area_acres: float
-    latitude: float
-    longitude: float
+    crop: str = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+    area_acres: float = Field(
+        gt=0,
+        le=100000,
+    )
+
+    latitude: float = Field(
+        ge=-90,
+        le=90,
+    )
+
+    longitude: float = Field(
+        ge=-180,
+        le=180,
+    )
+
     soil: SoilData
 
 
 @router.get("")
-def get_farms():
-    farm_documents = db.collection("farms").stream()
+def get_farms(
+    current_user=Depends(get_current_user),
+):
+    owner_uid = current_user["uid"]
 
-    farms = []
+    farm_documents = (
+        db.collection("farms")
+        .where(
+            "owner_uid",
+            "==",
+            owner_uid,
+        )
+        .limit(100)
+        .stream()
+    )
 
-    for document in farm_documents:
-        farms.append(document.to_dict())
+    farms = [
+        document.to_dict()
+        for document in farm_documents
+    ]
 
     return {
         "farms": farms,
@@ -43,7 +85,10 @@ def get_farms():
 
 
 @router.get("/{farm_id}")
-def get_farm(farm_id: str):
+def get_farm(
+    farm_id: str,
+    current_user=Depends(get_current_user),
+):
     document = (
         db.collection("farms")
         .document(farm_id)
@@ -56,16 +101,36 @@ def get_farm(farm_id: str):
             detail="Farm not found",
         )
 
-    return document.to_dict()
+    farm = document.to_dict()
+
+    if farm.get("owner_uid") != current_user["uid"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Farm not found",
+        )
+
+    return farm
 
 
 @router.post("")
-def create_farm(farm: FarmCreate):
+def create_farm(
+    farm: FarmCreate,
+    current_user=Depends(get_current_user),
+):
     farm_id = str(uuid4())
+
+    crop = farm.crop.strip()
+
+    if not crop:
+        raise HTTPException(
+            status_code=422,
+            detail="Crop name cannot be empty.",
+        )
 
     new_farm = {
         "farm_id": farm_id,
-        "crop": farm.crop,
+        "owner_uid": current_user["uid"],
+        "crop": crop,
         "area_acres": farm.area_acres,
         "latitude": farm.latitude,
         "longitude": farm.longitude,

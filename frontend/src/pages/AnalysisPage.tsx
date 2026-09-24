@@ -1206,15 +1206,27 @@ function AnalysisPage() {
                 </span>
 
                 <span className="rounded-full bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-200">
-                  {weather?.source || "Weather Provider"}
+                  {weather
+                    ? weather.source
+                    : "Weather · Unavailable"}
                 </span>
 
                 <span className="rounded-full bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-200">
-                  Sentinel-2
+                  {satellite
+                    ? "Sentinel-2"
+                    : "Sentinel-2 · Unavailable"}
                 </span>
 
-                <span className="rounded-full bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-200">
-                  Missing sources remain unavailable
+                <span
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    weather && satellite
+                      ? "bg-green-800 text-green-100"
+                      : "bg-yellow-300/10 text-yellow-100"
+                  }`}
+                >
+                  {weather && satellite
+                    ? "All advisory sources available"
+                    : "Some advisory sources unavailable"}
                 </span>
               </div>
             </div>

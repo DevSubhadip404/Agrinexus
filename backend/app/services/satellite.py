@@ -10,8 +10,8 @@ from rasterio.warp import transform
 STAC_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 SENTINEL_COLLECTION = "sentinel-2-l2a"
 
-# Sentinel-2 Scene Classification Layer values that we do not want
-# to use for vegetation-index calculations.
+MAX_SCENE_CLOUD_COVER = 80
+
 INVALID_SCL_VALUES = {
     0,   # No data
     1,   # Saturated / defective
@@ -51,7 +51,10 @@ def sample_asset(
         if np.isnan(value):
             return None
 
-        if dataset.nodata is not None and value == dataset.nodata:
+        if (
+            dataset.nodata is not None
+            and value == dataset.nodata
+        ):
             return None
 
         return value
@@ -66,7 +69,9 @@ def calculate_index(
     if denominator == 0:
         return None
 
-    return (first_band - second_band) / denominator
+    return (
+        first_band - second_band
+    ) / denominator
 
 
 def get_satellite_signals(
@@ -81,7 +86,6 @@ def get_satellite_signals(
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=60)
 
-    # Small search area around the farm point.
     offset = 0.002
 
     bbox = [
@@ -92,17 +96,14 @@ def get_satellite_signals(
     ]
 
     search = catalog.search(
-        collections=[SENTINEL_COLLECTION],
+        collections=[
+            SENTINEL_COLLECTION,
+        ],
         bbox=bbox,
         datetime=(
             f"{start_date.date().isoformat()}/"
             f"{end_date.date().isoformat()}"
         ),
-        query={
-            "eo:cloud_cover": {
-                "lt": 80,
-            }
-        },
         max_items=20,
     )
 
@@ -111,12 +112,25 @@ def get_satellite_signals(
     items.sort(
         key=lambda item: (
             item.datetime
-            or datetime.min.replace(tzinfo=timezone.utc)
+            or datetime.min.replace(
+                tzinfo=timezone.utc
+            )
         ),
         reverse=True,
     )
 
     for item in items:
+        scene_cloud_cover = item.properties.get(
+            "eo:cloud_cover"
+        )
+
+        if (
+            scene_cloud_cover is not None
+            and scene_cloud_cover
+            > MAX_SCENE_CLOUD_COVER
+        ):
+            continue
+
         required_assets = {
             "B04",
             "B08",
@@ -124,7 +138,9 @@ def get_satellite_signals(
             "SCL",
         }
 
-        if not required_assets.issubset(item.assets.keys()):
+        if not required_assets.issubset(
+            item.assets.keys()
+        ):
             continue
 
         scl = sample_asset(
@@ -159,7 +175,11 @@ def get_satellite_signals(
             longitude,
         )
 
-        if red is None or nir is None or swir is None:
+        if (
+            red is None
+            or nir is None
+            or swir is None
+        ):
             continue
 
         ndvi = calculate_index(
@@ -200,9 +220,7 @@ def get_satellite_signals(
             "vegetation_health": vegetation_health,
             "observed_at": observed_at,
             "scene_id": item.id,
-            "scene_cloud_cover": item.properties.get(
-                "eo:cloud_cover"
-            ),
+            "scene_cloud_cover": scene_cloud_cover,
             "scene_classification": scl_value,
             "source": "Sentinel-2 Level-2A",
             "provider": "Microsoft Planetary Computer",

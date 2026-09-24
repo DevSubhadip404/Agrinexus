@@ -46,17 +46,18 @@ def generate_farm_explanation(
 Sentinel-2 satellite observation:
 NDVI: {ndvi}
 NDMI: {ndmi}
-Observation time: {satellite_observed_at or "Unknown"}
+Satellite observation time: {satellite_observed_at or "Unknown"}
 """
 
     prompt = f"""
 You are AgriNexus, an agricultural advisory assistant.
 
-Explain the following farm conditions to a farmer in simple {language}.
+Explain the following farm conditions to a farmer in clear, simple,
+professional {language}.
 
 Crop: {crop}
 
-Live weather:
+Current weather:
 Temperature: {temperature}°C
 Humidity: {humidity}%
 Rain probability: {rain_probability}%
@@ -70,16 +71,24 @@ Soil moisture: {moisture}
 
 Instructions:
 - Use only the measurements provided.
-- Do not invent measurements, diseases, pests, or field conditions.
-- Clearly distinguish satellite signals from soil and weather measurements.
-- Treat NDVI and NDMI as indicators, not proof of a specific problem.
-- If NDVI appears relatively low, suggest field inspection rather than claiming crop stress with certainty.
-- If NDMI appears relatively low, mention possible vegetation moisture stress cautiously.
-- Consider rainfall probability before recommending irrigation.
+- Do not invent measurements, dates, diseases, pests, or field conditions.
+- Current weather and the Sentinel-2 observation may come from different dates.
+- Never describe the Sentinel-2 observation date as "today".
+- Clearly distinguish current weather, farmer-provided soil data, and satellite observations.
+- Treat NDVI and NDMI as indicators, not proof of a specific crop problem.
+- If NDVI appears relatively low, recommend field inspection rather than claiming crop stress with certainty.
+- If NDMI appears relatively low, describe possible vegetation moisture stress cautiously.
+- Consider rain probability before recommending irrigation.
 - Prefer regenerative practices such as mulch, residue retention, compost, crop rotation, cover crops, and efficient water use when relevant.
 - Do not prescribe restricted pesticides or chemical dosages.
 - Do not diagnose disease from these measurements alone.
-- Keep the advice practical and farmer-friendly.
+- Avoid unnecessary greetings and conversational filler.
+- Keep the explanation practical, concise, and professional.
+- Write plain text only.
+- Do not use Markdown.
+- Do not use asterisks.
+- Do not use Markdown headings.
+- Use short readable paragraphs.
 - Keep the response under 180 words.
 """
 

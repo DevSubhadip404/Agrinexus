@@ -591,6 +591,42 @@ Potential extensions include:
 
 ---
 
+## Acknowledgements & Open-Source Components
+
+AgriNexus is an original hackathon implementation built using open-source libraries and external data/API services. Copyright, licenses, trademarks, and terms for third-party components remain with their respective maintainers and providers.
+
+### Google Technologies
+
+- [Google Gemini](https://ai.google.dev/) — generative AI for multilingual farm advisory and multimodal Crop Doctor analysis.
+- [Firebase](https://firebase.google.com/) — authentication, anonymous guest identity, and Cloud Firestore integration.
+
+### Earth Observation
+
+- [Copernicus Sentinel-2](https://dataspace.copernicus.eu/explore-data/data-collections/sentinel-data/sentinel-2) — Level-2A Earth-observation imagery used for vegetation and vegetation-moisture indicators.
+- [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/) — STAC-based access to Sentinel-2 imagery.
+- [pystac-client](https://github.com/stac-utils/pystac-client) — STAC catalog querying.
+- [Rasterio](https://rasterio.readthedocs.io/) — geospatial raster access and sampling.
+- [NumPy](https://numpy.org/) — numerical calculations used in satellite-index processing.
+
+### Weather
+
+- [Open-Meteo](https://open-meteo.com/) — primary live weather and forecast provider.
+- [MET Norway Locationforecast](https://api.met.no/weatherapi/locationforecast/2.0/documentation) — fallback live weather provider.
+
+### Application Frameworks & Libraries
+
+- [React](https://react.dev/) — frontend user interface.
+- [TypeScript](https://www.typescriptlang.org/) — frontend application language.
+- [Vite](https://vite.dev/) — frontend development and build tooling.
+- [Tailwind CSS](https://tailwindcss.com/) — user-interface styling.
+- [FastAPI](https://fastapi.tiangolo.com/) — backend API framework.
+- [Pydantic](https://docs.pydantic.dev/) — backend data validation.
+- [Uvicorn](https://www.uvicorn.org/) — ASGI application server.
+
+AgriNexus does not claim ownership of these third-party technologies or datasets. Their use is subject to their respective licenses, attribution requirements, API policies, and terms of service.
+
+---
+
 ## Responsible Use
 
 AgriNexus is a hackathon prototype and agricultural decision-support platform.

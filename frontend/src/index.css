@@ -1,8 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap");
+
 @import "tailwindcss";
+
 
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
   background: #f6f8f4;
   color: #172019;
+}
+
+
+.brand-wordmark {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+
+.brand-subtitle {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1;
 }

@@ -1,12 +1,6 @@
-import { API_BASE_URL, USE_MOCK_DATA } from "../config"
+import { API_BASE_URL } from "../config"
+import type { Farm } from "../types/farm"
 
-import {
-  createFarm as createMockFarm,
-  getFarmById as getMockFarmById,
-  getFarms as getMockFarms,
-} from "./mockFarmService"
-
-import type { Farm } from "./mockFarmService"
 
 export type CreateFarmInput = {
   crop: string
@@ -23,11 +17,8 @@ export type CreateFarmInput = {
   }
 }
 
-export async function getFarms(): Promise<Farm[]> {
-  if (USE_MOCK_DATA) {
-    return getMockFarms()
-  }
 
+export async function getFarms(): Promise<Farm[]> {
   const response = await fetch(
     `${API_BASE_URL}/api/farms`
   )
@@ -41,13 +32,10 @@ export async function getFarms(): Promise<Farm[]> {
   return data.farms
 }
 
+
 export async function getFarmById(
   farmId: string
 ): Promise<Farm | undefined> {
-  if (USE_MOCK_DATA) {
-    return getMockFarmById(farmId)
-  }
-
   const response = await fetch(
     `${API_BASE_URL}/api/farms/${farmId}`
   )
@@ -63,13 +51,10 @@ export async function getFarmById(
   return response.json()
 }
 
+
 export async function createFarm(
   farm: CreateFarmInput
 ): Promise<Farm> {
-  if (USE_MOCK_DATA) {
-    return createMockFarm(farm)
-  }
-
   const response = await fetch(
     `${API_BASE_URL}/api/farms`,
     {

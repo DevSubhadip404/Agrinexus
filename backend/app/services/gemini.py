@@ -88,6 +88,9 @@ Instructions:
 - Never describe the Sentinel-2 observation date as "today".
 - Clearly distinguish current weather, farmer-provided soil data, and satellite observations.
 - Treat NDVI and NDMI as indicators, not proof of a specific crop problem.
+- Use the provided NDVI and NDMI values only for interpretation.
+- Do not repeat the numeric NDVI or NDMI values in the explanation.
+- Refer to them as vegetation and vegetation-moisture indicators instead.
 - If NDVI appears relatively low, recommend field inspection rather than claiming crop stress with certainty.
 - If NDMI appears relatively low, describe possible vegetation moisture stress cautiously.
 - Only use rain probability when it is actually available.

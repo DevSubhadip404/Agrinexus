@@ -32,7 +32,24 @@ def get_farm_weather(farm_id: str):
             latitude=farm["latitude"],
             longitude=farm["longitude"],
         )
-    except RequestException:
+
+    except RequestException as error:
+        print(
+            "Open-Meteo request failed:",
+            repr(error),
+        )
+
+        if error.response is not None:
+            print(
+                "Open-Meteo status:",
+                error.response.status_code,
+            )
+
+            print(
+                "Open-Meteo response:",
+                error.response.text[:500],
+            )
+
         raise HTTPException(
             status_code=502,
             detail="Weather service unavailable",

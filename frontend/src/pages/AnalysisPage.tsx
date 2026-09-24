@@ -2,7 +2,10 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
-import { getFarmExplanation } from "../services/advisoryService"
+import {
+  getFarmExplanation,
+  type FarmExplanation,
+} from "../services/advisoryService"
 import { getFarmById } from "../services/farmService"
 import { getFieldSignals } from "../services/mockSignalService"
 import {
@@ -10,6 +13,7 @@ import {
   type WeatherData,
 } from "../services/weatherService"
 import type { Farm } from "../services/mockFarmService"
+
 
 function AnalysisPage() {
   const { farmId } = useParams()
@@ -20,12 +24,16 @@ function AnalysisPage() {
   const [language, setLanguage] = useState("English")
 
   const [aiExplanation, setAiExplanation] = useState("")
+  const [advisoryData, setAdvisoryData] =
+    useState<FarmExplanation | null>(null)
+
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState("")
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [weatherFallback, setWeatherFallback] = useState(false)
+
 
   useEffect(() => {
     async function loadAnalysis() {
@@ -47,7 +55,9 @@ function AnalysisPage() {
 
         try {
           const weatherData = await getFarmWeather(farmId)
+
           setWeather(weatherData)
+          setWeatherFallback(false)
         } catch (weatherError) {
           console.error(weatherError)
           setWeatherFallback(true)
@@ -63,6 +73,7 @@ function AnalysisPage() {
     loadAnalysis()
   }, [farmId])
 
+
   useEffect(() => {
     async function loadAIExplanation() {
       if (!farmId || !farm) {
@@ -71,6 +82,8 @@ function AnalysisPage() {
 
       setAiLoading(true)
       setAiError("")
+      setAiExplanation("")
+      setAdvisoryData(null)
 
       try {
         const result = await getFarmExplanation(
@@ -79,6 +92,7 @@ function AnalysisPage() {
         )
 
         setAiExplanation(result.explanation)
+        setAdvisoryData(result)
       } catch (err) {
         console.error(err)
 
@@ -93,6 +107,7 @@ function AnalysisPage() {
     loadAIExplanation()
   }, [farmId, farm, language])
 
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -105,6 +120,7 @@ function AnalysisPage() {
     )
   }
 
+
   if (error || !farm) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -116,6 +132,7 @@ function AnalysisPage() {
       </div>
     )
   }
+
 
   const mockSignals = getFieldSignals(
     farm.latitude,
@@ -139,6 +156,7 @@ function AnalysisPage() {
   const rainfallForecastMm =
     weather?.rainfall_forecast_mm ??
     mockSignals.weather.rainfallForecastMm
+
 
   const recommendations = []
 
@@ -210,6 +228,7 @@ function AnalysisPage() {
       "Use crop rotation, residue retention, and suitable cover crops to improve long-term soil health.",
   })
 
+
   const diseaseRisk =
     humidity >= 72 ||
     farm.soil.moisture === "High"
@@ -218,12 +237,14 @@ function AnalysisPage() {
         ? "Medium"
         : "Low"
 
-  const confidence =
+
+  const analysisConfidence =
     weather && satellite.ndvi >= 0.65
       ? 91
       : weather
         ? 86
         : 78
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -237,6 +258,7 @@ function AnalysisPage() {
           >
             ← Back to Farm
           </Link>
+
 
           <div className="mt-6">
             <p className="text-sm font-semibold tracking-widest text-green-700">
@@ -252,12 +274,14 @@ function AnalysisPage() {
             </p>
           </div>
 
+
           {weatherFallback && (
             <div className="mt-6 rounded-xl bg-yellow-50 p-4 text-sm text-yellow-800">
               Live weather is temporarily unavailable. AgriNexus is using
               fallback demo weather data.
             </div>
           )}
+
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -274,6 +298,7 @@ function AnalysisPage() {
               </p>
             </div>
 
+
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
                 Vegetation Moisture
@@ -288,6 +313,7 @@ function AnalysisPage() {
               </p>
             </div>
 
+
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
                 Live Rain Probability
@@ -301,6 +327,7 @@ function AnalysisPage() {
                 {rainfallForecastMm} mm forecast
               </p>
             </div>
+
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
@@ -317,6 +344,7 @@ function AnalysisPage() {
             </div>
           </div>
 
+
           <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -325,14 +353,15 @@ function AnalysisPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-                  Signals used to generate this advisory.
+                  Signals used across the AgriNexus analysis layer.
                 </p>
               </div>
 
               <div className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800">
-                Confidence: {confidence}%
+                Analysis Confidence: {analysisConfidence}%
               </div>
             </div>
+
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-gray-200 p-5">
@@ -348,6 +377,7 @@ function AnalysisPage() {
                   Prototype
                 </p>
               </div>
+
 
               <div className="rounded-xl border border-gray-200 p-5">
                 <p className="font-semibold text-gray-900">
@@ -365,6 +395,7 @@ function AnalysisPage() {
                 </p>
               </div>
 
+
               <div className="rounded-xl border border-gray-200 p-5">
                 <p className="font-semibold text-gray-900">
                   Soil
@@ -378,6 +409,7 @@ function AnalysisPage() {
                   Connected
                 </p>
               </div>
+
 
               <div className="rounded-xl border border-gray-200 p-5">
                 <p className="font-semibold text-gray-900">
@@ -394,6 +426,7 @@ function AnalysisPage() {
               </div>
             </div>
           </div>
+
 
           <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900">
@@ -417,6 +450,7 @@ function AnalysisPage() {
               ))}
             </div>
           </div>
+
 
           <div className="mt-8 rounded-2xl bg-green-900 p-8 text-white shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -451,11 +485,13 @@ function AnalysisPage() {
               </select>
             </div>
 
+
             {aiLoading && (
               <p className="mt-5 text-green-100">
                 Gemini is generating your explanation...
               </p>
             )}
+
 
             {aiError && (
               <p className="mt-5 text-yellow-200">
@@ -463,15 +499,82 @@ function AnalysisPage() {
               </p>
             )}
 
+
             {!aiLoading && !aiError && aiExplanation && (
               <p className="mt-5 whitespace-pre-line leading-7 text-green-50">
                 {aiExplanation}
               </p>
             )}
 
-            <p className="mt-5 text-xs text-green-200">
-              Generated from your farm data and live weather using Gemini.
-              Satellite indicators are currently prototype signals.
+
+            {!aiLoading && !aiError && advisoryData && (
+              <div className="mt-8 border-t border-green-700 pt-7">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold tracking-widest text-green-300">
+                      ADVISORY TRANSPARENCY
+                    </p>
+
+                    <h3 className="mt-1 text-lg font-bold">
+                      Confidence & Provenance
+                    </h3>
+                  </div>
+
+                  <div className="rounded-full bg-green-800 px-4 py-2 text-sm font-semibold text-green-100">
+                    {advisoryData.confidence.level} Confidence ·{" "}
+                    {advisoryData.confidence.score}%
+                  </div>
+                </div>
+
+
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  {advisoryData.provenance.map((item) => (
+                    <div
+                      key={`${item.source}-${item.data}`}
+                      className="rounded-xl border border-green-700 bg-green-950/40 p-5"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold text-white">
+                          {item.source}
+                        </p>
+
+                        <span className="rounded-full bg-green-800 px-2 py-1 text-xs font-semibold text-green-100">
+                          {item.status}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-green-100">
+                        {item.data}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+
+                <div className="mt-5 rounded-xl border border-yellow-300/30 bg-yellow-300/10 p-5">
+                  <p className="text-xs font-semibold tracking-widest text-yellow-200">
+                    UNCERTAINTY NOTICE
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-green-50">
+                    {advisoryData.uncertainty.message}
+                  </p>
+
+                  <p className="mt-3 text-xs font-semibold text-yellow-100">
+                    Satellite included in Gemini explanation:{" "}
+                    {advisoryData.uncertainty.satellite_included
+                      ? "Yes"
+                      : "No"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+
+            <p className="mt-6 text-xs text-green-200">
+              Generated from farmer-provided farm data and live weather using
+              Gemini. Prototype satellite indicators are displayed separately
+              and are not presented as verified satellite observations.
             </p>
           </div>
         </div>
@@ -479,5 +582,6 @@ function AnalysisPage() {
     </div>
   )
 }
+
 
 export default AnalysisPage

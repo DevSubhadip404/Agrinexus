@@ -9,6 +9,10 @@ import {
 import { getFarmById } from "../services/farmService"
 import { getFieldSignals } from "../services/mockSignalService"
 import {
+  getFarmSatellite,
+  type SatelliteData,
+} from "../services/satelliteService"
+import {
   getFarmWeather,
   type WeatherData,
 } from "../services/weatherService"
@@ -20,6 +24,7 @@ function AnalysisPage() {
 
   const [farm, setFarm] = useState<Farm | undefined>()
   const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [satellite, setSatellite] = useState<SatelliteData | null>(null)
 
   const [language, setLanguage] = useState("English")
 
@@ -32,7 +37,9 @@ function AnalysisPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
   const [weatherFallback, setWeatherFallback] = useState(false)
+  const [satelliteFallback, setSatelliteFallback] = useState(false)
 
 
   useEffect(() => {
@@ -60,7 +67,21 @@ function AnalysisPage() {
           setWeatherFallback(false)
         } catch (weatherError) {
           console.error(weatherError)
+
+          setWeather(null)
           setWeatherFallback(true)
+        }
+
+        try {
+          const satelliteData = await getFarmSatellite(farmId)
+
+          setSatellite(satelliteData)
+          setSatelliteFallback(false)
+        } catch (satelliteError) {
+          console.error(satelliteError)
+
+          setSatellite(null)
+          setSatelliteFallback(true)
         }
       } catch (err) {
         console.error(err)
@@ -139,7 +160,19 @@ function AnalysisPage() {
     farm.longitude
   )
 
-  const satellite = mockSignals.satellite
+
+  const ndvi =
+    satellite?.ndvi ??
+    mockSignals.satellite.ndvi
+
+  const ndmi =
+    satellite?.ndmi ??
+    mockSignals.satellite.ndmi
+
+  const vegetationHealth =
+    satellite?.vegetation_health ??
+    mockSignals.satellite.vegetationHealth
+
 
   const temperature =
     weather?.temperature ??
@@ -214,11 +247,23 @@ function AnalysisPage() {
     })
   }
 
-  if (satellite.ndvi < 0.65) {
+  if (ndvi < 0.65) {
     recommendations.push({
-      type: "Satellite Alert",
+      type: satellite
+        ? "Sentinel-2 Vegetation Alert"
+        : "Satellite Alert",
       message:
         "Vegetation signals suggest possible crop stress. Inspect the field for nutrient, moisture, or disease problems.",
+    })
+  }
+
+  if (ndmi < 0.1) {
+    recommendations.push({
+      type: satellite
+        ? "Sentinel-2 Moisture Alert"
+        : "Vegetation Moisture Alert",
+      message:
+        "Satellite moisture signals are relatively low. Compare this signal with field soil moisture before adjusting irrigation.",
     })
   }
 
@@ -238,12 +283,17 @@ function AnalysisPage() {
         : "Low"
 
 
-  const analysisConfidence =
-    weather && satellite.ndvi >= 0.65
-      ? 91
-      : weather
-        ? 86
-        : 78
+  const signalCoverage =
+    weather && satellite
+      ? 100
+      : weather || satellite
+        ? 75
+        : 50
+
+
+  const observedDate = satellite?.observed_at
+    ? new Date(satellite.observed_at).toLocaleDateString()
+    : null
 
 
   return (
@@ -270,7 +320,7 @@ function AnalysisPage() {
             </h1>
 
             <p className="mt-2 text-gray-600">
-              Live weather, soil, satellite signals, and regenerative intelligence.
+              Live weather, soil, Sentinel-2 satellite signals, and regenerative intelligence.
             </p>
           </div>
 
@@ -283,6 +333,14 @@ function AnalysisPage() {
           )}
 
 
+          {satelliteFallback && (
+            <div className="mt-4 rounded-xl bg-yellow-50 p-4 text-sm text-yellow-800">
+              A usable recent Sentinel-2 observation could not be loaded.
+              AgriNexus is temporarily showing fallback satellite signals.
+            </div>
+          )}
+
+
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
@@ -290,11 +348,11 @@ function AnalysisPage() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-green-700">
-                {satellite.vegetationHealth}%
+                {vegetationHealth}%
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
-                NDVI: {satellite.ndvi}
+                NDVI: {ndvi}
               </p>
             </div>
 
@@ -305,7 +363,7 @@ function AnalysisPage() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-600">
-                {satellite.ndmi}
+                {ndmi}
               </p>
 
               <p className="mt-2 text-sm text-gray-600">
@@ -358,7 +416,7 @@ function AnalysisPage() {
               </div>
 
               <div className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800">
-                Analysis Confidence: {analysisConfidence}%
+                Signal Coverage: {signalCoverage}%
               </div>
             </div>
 
@@ -373,9 +431,27 @@ function AnalysisPage() {
                   NDVI and NDMI vegetation signals.
                 </p>
 
-                <p className="mt-3 text-xs font-semibold uppercase text-yellow-700">
-                  Prototype
-                </p>
+                {satellite ? (
+                  <>
+                    <p className="mt-3 text-xs font-semibold uppercase text-green-700">
+                      Live · {satellite.source}
+                    </p>
+
+                    <p className="mt-2 text-xs text-gray-500">
+                      {satellite.provider}
+                    </p>
+
+                    {observedDate && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Observed {observedDate}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-3 text-xs font-semibold uppercase text-yellow-700">
+                    Fallback Prototype
+                  </p>
+                )}
               </div>
 
 
@@ -425,6 +501,59 @@ function AnalysisPage() {
                 </p>
               </div>
             </div>
+
+
+            {satellite && (
+              <div className="mt-6 rounded-xl bg-blue-50 p-5">
+                <p className="font-semibold text-blue-900">
+                  Sentinel-2 Observation
+                </p>
+
+                <div className="mt-3 grid gap-3 text-sm text-blue-900 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-xs uppercase text-blue-600">
+                      NDVI
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {satellite.ndvi}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase text-blue-600">
+                      NDMI
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {satellite.ndmi}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase text-blue-600">
+                      Scene Cloud Cover
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {satellite.scene_cloud_cover !== null
+                        ? `${satellite.scene_cloud_cover.toFixed(1)}%`
+                        : "Unknown"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase text-blue-600">
+                      Observation
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {observedDate || "Unknown"}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-4 break-all text-xs text-blue-700">
+                  Scene: {satellite.scene_id}
+                </p>
+              </div>
+            )}
           </div>
 
 
@@ -572,9 +701,10 @@ function AnalysisPage() {
 
 
             <p className="mt-6 text-xs text-green-200">
-              Generated from farmer-provided farm data and live weather using
-              Gemini. Prototype satellite indicators are displayed separately
-              and are not presented as verified satellite observations.
+              Gemini currently explains farmer-provided soil data and live
+              weather. Sentinel-2 observations are shown separately and are
+              used by the deterministic field analysis and regenerative
+              recommendation layer.
             </p>
           </div>
         </div>

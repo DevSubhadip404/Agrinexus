@@ -3,6 +3,7 @@ import requests
 
 from app.firebase import db
 from app.services.gemini import generate_farm_explanation
+from app.services.satellite import get_satellite_signals
 from app.services.weather import get_weather
 
 
@@ -40,6 +41,19 @@ def get_farm_explanation(
 
     soil = farm.get("soil", {})
 
+    satellite = None
+
+    try:
+        satellite = get_satellite_signals(
+            latitude=farm["latitude"],
+            longitude=farm["longitude"],
+        )
+    except Exception as error:
+        print(
+            "Satellite advisory context unavailable:",
+            error,
+        )
+
     try:
         explanation = generate_farm_explanation(
             crop=farm["crop"],
@@ -49,6 +63,21 @@ def get_farm_explanation(
             soil_ph=soil.get("ph"),
             nitrogen=soil.get("nitrogen"),
             moisture=soil.get("moisture"),
+            ndvi=(
+                satellite.get("ndvi")
+                if satellite
+                else None
+            ),
+            ndmi=(
+                satellite.get("ndmi")
+                if satellite
+                else None
+            ),
+            satellite_observed_at=(
+                satellite.get("observed_at")
+                if satellite
+                else None
+            ),
             language=language,
         )
     except Exception as error:
@@ -60,7 +89,7 @@ def get_farm_explanation(
         )
 
     available_signals = 0
-    total_signals = 3
+    total_signals = 4
 
     if weather.get("temperature") is not None:
         available_signals += 1
@@ -71,9 +100,72 @@ def get_farm_explanation(
     if farm.get("crop"):
         available_signals += 1
 
+    if satellite is not None:
+        available_signals += 1
+
     confidence = round(
         (available_signals / total_signals) * 100
     )
+
+    provenance = [
+        {
+            "source": "Farmer Input",
+            "data": "Crop and soil measurements",
+            "status": "Provided",
+        },
+        {
+            "source": "Open-Meteo",
+            "data": "Live weather conditions",
+            "status": "Live",
+        },
+    ]
+
+    if satellite:
+        provenance.append(
+            {
+                "source": "Sentinel-2",
+                "data": (
+                    f"NDVI {satellite['ndvi']} · "
+                    f"NDMI {satellite['ndmi']} · "
+                    f"Observed {satellite['observed_at']}"
+                ),
+                "status": "Satellite Observation",
+            }
+        )
+    else:
+        provenance.append(
+            {
+                "source": "Sentinel-2",
+                "data": "No usable recent observation available",
+                "status": "Unavailable",
+            }
+        )
+
+    provenance.append(
+        {
+            "source": "Gemini",
+            "data": (
+                "Natural-language interpretation of "
+                "available farm signals"
+            ),
+            "status": "AI Generated",
+        }
+    )
+
+    if satellite:
+        uncertainty_message = (
+            "Gemini received farmer soil data, live weather, "
+            "and a recent Sentinel-2 observation. NDVI and NDMI "
+            "are treated as indicators rather than proof of a "
+            "specific crop condition."
+        )
+    else:
+        uncertainty_message = (
+            "Gemini received farmer soil data and live weather. "
+            "A usable recent Sentinel-2 observation was not "
+            "available, so satellite signals were not included "
+            "in this explanation."
+        )
 
     return {
         "farm_id": farm_id,
@@ -90,29 +182,20 @@ def get_farm_explanation(
                 else "Low"
             ),
         },
-        "provenance": [
-            {
-                "source": "Farmer Input",
-                "data": "Crop and soil measurements",
-                "status": "Provided",
-            },
-            {
-                "source": "Open-Meteo",
-                "data": "Live weather conditions",
-                "status": "Live",
-            },
-            {
-                "source": "Gemini",
-                "data": "Natural-language advisory explanation",
-                "status": "AI Generated",
-            },
-        ],
+        "provenance": provenance,
         "uncertainty": {
-            "satellite_included": False,
-            "message": (
-                "This explanation uses farmer-provided soil data and live "
-                "weather. Satellite vegetation signals are evaluated "
-                "separately in the AgriNexus analysis layer."
-            ),
+            "satellite_included": satellite is not None,
+            "message": uncertainty_message,
         },
+        "satellite_context": (
+            {
+                "ndvi": satellite["ndvi"],
+                "ndmi": satellite["ndmi"],
+                "observed_at": satellite["observed_at"],
+                "scene_id": satellite["scene_id"],
+                "source": satellite["source"],
+            }
+            if satellite
+            else None
+        ),
     }

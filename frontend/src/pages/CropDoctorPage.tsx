@@ -1,14 +1,25 @@
 import { useState } from "react"
 
 import Navbar from "../components/Navbar"
+import {
+  diagnoseCrop,
+  type CropDiagnosis,
+} from "../services/cropDoctorService"
 
 function CropDoctorPage() {
-  const [crop, setCrop] = useState("rice")
-  const [fileName, setFileName] = useState("")
+  const [crop, setCrop] = useState("Rice")
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState("")
-  const [diagnosed, setDiagnosed] = useState(false)
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  const [diagnosis, setDiagnosis] =
+    useState<CropDiagnosis | null>(null)
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  function handleFileChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = event.target.files?.[0]
 
     if (!file) {
@@ -19,53 +30,38 @@ function CropDoctorPage() {
       URL.revokeObjectURL(previewUrl)
     }
 
-    const newPreviewUrl = URL.createObjectURL(file)
-
-    setFileName(file.name)
-    setPreviewUrl(newPreviewUrl)
-    setDiagnosed(false)
+    setImageFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+    setDiagnosis(null)
+    setError("")
   }
 
-  function handleDiagnose() {
-    if (!fileName) {
+  async function handleDiagnose() {
+    if (!imageFile) {
       return
     }
 
-    setDiagnosed(true)
-  }
+    setLoading(true)
+    setError("")
+    setDiagnosis(null)
 
-  const diagnosis =
-    crop === "rice"
-      ? {
-          disease: "Possible Brown Spot",
-          confidence: 84,
-          severity: "Medium",
-          symptoms: [
-            "Brown circular lesions",
-            "Leaf discoloration",
-          ],
-          actions: [
-            "Inspect nearby rice plants for similar symptoms.",
-            "Remove severely affected leaves where practical.",
-            "Avoid excessive nitrogen application.",
-            "Seek expert advice if symptoms continue spreading.",
-          ],
-        }
-      : {
-          disease: "Possible Early Blight",
-          confidence: 81,
-          severity: "Medium",
-          symptoms: [
-            "Dark brown leaf spots",
-            "Concentric ring patterns",
-          ],
-          actions: [
-            "Inspect lower tomato leaves carefully.",
-            "Remove heavily affected plant material.",
-            "Avoid wetting foliage during irrigation.",
-            "Seek expert advice if infection continues spreading.",
-          ],
-        }
+    try {
+      const result = await diagnoseCrop(
+        crop,
+        imageFile
+      )
+
+      setDiagnosis(result.diagnosis)
+    } catch (err) {
+      console.error(err)
+
+      setError(
+        "Crop analysis is temporarily unavailable. Please try again."
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,8 +78,8 @@ function CropDoctorPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-gray-600">
-            Upload a clear photo of an affected crop leaf for AI-assisted
-            disease diagnosis.
+            Upload a clear crop image for AI-assisted visual
+            diagnosis.
           </p>
 
           <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
@@ -96,16 +92,24 @@ function CropDoctorPage() {
                 value={crop}
                 onChange={(event) => {
                   setCrop(event.target.value)
-                  setDiagnosed(false)
+                  setDiagnosis(null)
                 }}
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
               >
-                <option value="rice">
+                <option value="Rice">
                   Rice
                 </option>
 
-                <option value="tomato">
+                <option value="Tomato">
                   Tomato
+                </option>
+
+                <option value="Maize">
+                  Maize
+                </option>
+
+                <option value="Soybean">
+                  Soybean
                 </option>
               </select>
             </div>
@@ -125,14 +129,10 @@ function CropDoctorPage() {
 
             {previewUrl && (
               <div className="mt-6">
-                <p className="mb-3 text-sm font-medium text-gray-600">
-                  Selected: {fileName}
-                </p>
-
                 <img
                   src={previewUrl}
-                  alt="Selected crop leaf"
-                  className="max-h-80 w-full rounded-2xl object-contain bg-gray-100"
+                  alt="Selected crop"
+                  className="max-h-80 w-full rounded-2xl bg-gray-100 object-contain"
                 />
               </div>
             )}
@@ -140,22 +140,46 @@ function CropDoctorPage() {
             <button
               type="button"
               onClick={handleDiagnose}
-              disabled={!fileName}
+              disabled={!imageFile || loading}
               className="mt-6 w-full rounded-xl bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Diagnose Crop
+              {loading
+                ? "Analyzing Crop..."
+                : "Diagnose Crop"}
             </button>
+
+            {loading && (
+              <p className="mt-4 text-center text-sm text-gray-500">
+                Gemini is examining the crop image. This may take a few seconds.
+              </p>
+            )}
+
+            {error && (
+              <p className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">
+                {error}
+              </p>
+            )}
           </div>
 
-          {diagnosed && (
+          {diagnosis && (
             <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
-              <p className="text-sm font-semibold tracking-widest text-green-700">
-                AI DIAGNOSIS
-              </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold tracking-widest text-green-700">
+                    GEMINI CROP DIAGNOSIS
+                  </p>
 
-              <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                {diagnosis.disease}
-              </h2>
+                  <h2 className="mt-2 text-2xl font-bold text-gray-900">
+                    {diagnosis.disease}
+                  </h2>
+                </div>
+
+                {diagnosis.uncertain && (
+                  <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-semibold text-yellow-800">
+                    Uncertain result
+                  </span>
+                )}
+              </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl bg-green-50 p-5">
@@ -209,9 +233,9 @@ function CropDoctorPage() {
 
               <div className="mt-7 rounded-xl bg-gray-50 p-4">
                 <p className="text-xs leading-5 text-gray-500">
-                  This is currently a prototype diagnosis using mock data.
-                  The final version will use multimodal AI and return a
-                  confidence-aware result from the backend.
+                  AI-assisted visual assessment only. Confirm uncertain
+                  or severe cases with a qualified local agricultural
+                  expert before taking major treatment decisions.
                 </p>
               </div>
             </div>

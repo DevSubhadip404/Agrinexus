@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import Navbar from "../components/Navbar"
+import { getFarmExplanation } from "../services/advisoryService"
 import { getFarmById } from "../services/farmService"
 import { getFieldSignals } from "../services/mockSignalService"
 import {
@@ -16,7 +17,12 @@ function AnalysisPage() {
   const [farm, setFarm] = useState<Farm | undefined>()
   const [weather, setWeather] = useState<WeatherData | null>(null)
 
-  const [language, setLanguage] = useState("en")
+  const [language, setLanguage] = useState("English")
+
+  const [aiExplanation, setAiExplanation] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState("")
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [weatherFallback, setWeatherFallback] = useState(false)
@@ -56,6 +62,36 @@ function AnalysisPage() {
 
     loadAnalysis()
   }, [farmId])
+
+  useEffect(() => {
+    async function loadAIExplanation() {
+      if (!farmId || !farm) {
+        return
+      }
+
+      setAiLoading(true)
+      setAiError("")
+
+      try {
+        const result = await getFarmExplanation(
+          farmId,
+          language
+        )
+
+        setAiExplanation(result.explanation)
+      } catch (err) {
+        console.error(err)
+
+        setAiError(
+          "AI explanation is temporarily unavailable."
+        )
+      } finally {
+        setAiLoading(false)
+      }
+    }
+
+    loadAIExplanation()
+  }, [farmId, farm, language])
 
   if (loading) {
     return (
@@ -188,14 +224,6 @@ function AnalysisPage() {
       : weather
         ? 86
         : 78
-
-  const explanations = {
-    en: `Your ${farm.crop} farm currently has an NDVI of ${satellite.ndvi} and an estimated vegetation health score of ${satellite.vegetationHealth}%. Live weather shows ${temperature}°C temperature, ${humidity}% humidity, and a ${rainProbability}% chance of rain. Soil pH is ${farm.soil.ph} and nitrogen is ${farm.soil.nitrogen.toLowerCase()}. AgriNexus combines these signals to generate regenerative recommendations.`,
-
-    hi: `आपके ${farm.crop} खेत का NDVI ${satellite.ndvi} है और अनुमानित वनस्पति स्वास्थ्य स्कोर ${satellite.vegetationHealth}% है। लाइव मौसम के अनुसार तापमान ${temperature}°C, आर्द्रता ${humidity}% और बारिश की संभावना ${rainProbability}% है। मिट्टी का pH ${farm.soil.ph} है और नाइट्रोजन स्तर ${farm.soil.nitrogen} है। AgriNexus इन संकेतों को मिलाकर पुनर्योजी कृषि सुझाव देता है।`,
-
-    te: `మీ ${farm.crop} పొలానికి NDVI ${satellite.ndvi} మరియు అంచనా వృక్ష ఆరోగ్య స్కోర్ ${satellite.vegetationHealth}% ఉంది. ప్రత్యక్ష వాతావరణ సమాచారం ప్రకారం ఉష్ణోగ్రత ${temperature}°C, తేమ ${humidity}% మరియు వర్షం పడే అవకాశం ${rainProbability}% ఉంది. నేల pH ${farm.soil.ph}, నైట్రోజన్ స్థాయి ${farm.soil.nitrogen}. AgriNexus ఈ సంకేతాలను కలిపి పునరుత్పాదక వ్యవసాయ సూచనలు అందిస్తుంది.`,
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -330,13 +358,7 @@ function AnalysisPage() {
                   Live temperature, humidity, and rainfall forecast.
                 </p>
 
-                <p
-                  className={`mt-3 text-xs font-semibold uppercase ${
-                    weather
-                      ? "text-green-700"
-                      : "text-yellow-700"
-                  }`}
-                >
+                <p className="mt-3 text-xs font-semibold uppercase text-green-700">
                   {weather
                     ? `Live · ${weather.source}`
                     : "Fallback"}
@@ -359,15 +381,15 @@ function AnalysisPage() {
 
               <div className="rounded-xl border border-gray-200 p-5">
                 <p className="font-semibold text-gray-900">
-                  AI Advisory
+                  Gemini AI
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
-                  Multi-signal regenerative recommendations.
+                  Farmer-friendly multilingual explanation.
                 </p>
 
-                <p className="mt-3 text-xs font-semibold uppercase text-yellow-700">
-                  Prototype
+                <p className="mt-3 text-xs font-semibold uppercase text-green-700">
+                  Live
                 </p>
               </div>
             </div>
@@ -400,7 +422,7 @@ function AnalysisPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold tracking-widest text-green-200">
-                  AI EXPLANATION
+                  GEMINI AI EXPLANATION
                 </p>
 
                 <h2 className="mt-2 text-2xl font-bold">
@@ -415,27 +437,41 @@ function AnalysisPage() {
                 }
                 className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-gray-900"
               >
-                <option value="en">
+                <option value="English">
                   English
                 </option>
 
-                <option value="hi">
+                <option value="Hindi">
                   हिन्दी
                 </option>
 
-                <option value="te">
+                <option value="Telugu">
                   తెలుగు
                 </option>
               </select>
             </div>
 
-            <p className="mt-5 leading-7 text-green-50">
-              {explanations[language as keyof typeof explanations]}
-            </p>
+            {aiLoading && (
+              <p className="mt-5 text-green-100">
+                Gemini is generating your explanation...
+              </p>
+            )}
+
+            {aiError && (
+              <p className="mt-5 text-yellow-200">
+                {aiError}
+              </p>
+            )}
+
+            {!aiLoading && !aiError && aiExplanation && (
+              <p className="mt-5 whitespace-pre-line leading-7 text-green-50">
+                {aiExplanation}
+              </p>
+            )}
 
             <p className="mt-5 text-xs text-green-200">
-              Weather is live. Satellite and AI explanation layers are still
-              prototype components and will be replaced by real integrations.
+              Generated from your farm data and live weather using Gemini.
+              Satellite indicators are currently prototype signals.
             </p>
           </div>
         </div>

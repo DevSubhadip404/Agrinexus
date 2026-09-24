@@ -114,8 +114,11 @@ def get_farm_explanation(
             "status": "Provided",
         },
         {
-            "source": "Open-Meteo",
-            "data": "Live weather conditions",
+            "source": weather.get(
+                "source",
+                "Weather Provider",
+            ),
+            "data": "Current weather conditions",
             "status": "Live",
         },
     ]

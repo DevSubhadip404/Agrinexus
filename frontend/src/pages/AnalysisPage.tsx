@@ -565,7 +565,7 @@ function AnalysisPage() {
                       : "bg-red-50 text-red-600"
                   }`}
                 >
-                  Open-Meteo ·{" "}
+                  {weather?.source || "Weather Provider"} ·{" "}
                   {weather
                     ? "Live"
                     : "Unavailable"}
@@ -819,7 +819,7 @@ function AnalysisPage() {
 
 
               <SourceCard
-                title="Open-Meteo"
+                title={weather?.source || "Weather Provider"}
                 description="Live temperature, humidity, and rainfall forecast signals."
                 available={weather !== null}
                 status={
@@ -1188,7 +1188,7 @@ function AnalysisPage() {
                 </span>
 
                 <span className="rounded-full bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-200">
-                  Open-Meteo
+                  {weather?.source || "Weather Provider"}
                 </span>
 
                 <span className="rounded-full bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-200">

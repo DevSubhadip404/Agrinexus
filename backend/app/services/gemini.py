@@ -13,7 +13,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is missing from backend/.env"
+        "GEMINI_API_KEY is missing."
     )
 
 
@@ -26,14 +26,24 @@ PRIMARY_MODEL = "gemini-3.6-flash"
 FALLBACK_MODEL = "gemini-3.5-flash-lite"
 
 
+def _format_measurement(
+    value,
+    suffix: str = "",
+) -> str:
+    if value is None:
+        return "Unavailable"
+
+    return f"{value}{suffix}"
+
+
 def generate_farm_explanation(
     crop: str,
-    temperature: float,
-    humidity: float,
-    rain_probability: float,
-    soil_ph: float,
-    nitrogen: str,
-    moisture: str,
+    temperature: float | None,
+    humidity: float | None,
+    rain_probability: float | None,
+    soil_ph: float | None,
+    nitrogen: str | None,
+    moisture: str | None,
     ndvi: float | None = None,
     ndmi: float | None = None,
     satellite_observed_at: str | None = None,
@@ -58,19 +68,21 @@ professional {language}.
 Crop: {crop}
 
 Current weather:
-Temperature: {temperature}°C
-Humidity: {humidity}%
-Rain probability: {rain_probability}%
+Temperature: {_format_measurement(temperature, "°C")}
+Humidity: {_format_measurement(humidity, "%")}
+Rain probability: {_format_measurement(rain_probability, "%")}
 
 Farmer-provided soil data:
-Soil pH: {soil_ph}
-Nitrogen level: {nitrogen}
-Soil moisture: {moisture}
+Soil pH: {_format_measurement(soil_ph)}
+Nitrogen level: {nitrogen or "Unavailable"}
+Soil moisture: {moisture or "Unavailable"}
 
 {satellite_context}
 
 Instructions:
 - Use only the measurements provided.
+- If a measurement is marked Unavailable, do not infer or invent its value.
+- Do not convert missing rain probability into 0%.
 - Do not invent measurements, dates, diseases, pests, or field conditions.
 - Current weather and the Sentinel-2 observation may come from different dates.
 - Never describe the Sentinel-2 observation date as "today".
@@ -78,7 +90,7 @@ Instructions:
 - Treat NDVI and NDMI as indicators, not proof of a specific crop problem.
 - If NDVI appears relatively low, recommend field inspection rather than claiming crop stress with certainty.
 - If NDMI appears relatively low, describe possible vegetation moisture stress cautiously.
-- Consider rain probability before recommending irrigation.
+- Only use rain probability when it is actually available.
 - Prefer regenerative practices such as mulch, residue retention, compost, crop rotation, cover crops, and efficient water use when relevant.
 - Do not prescribe restricted pesticides or chemical dosages.
 - Do not diagnose disease from these measurements alone.

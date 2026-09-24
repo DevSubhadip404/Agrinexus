@@ -88,24 +88,22 @@ def get_farm_explanation(
             detail="Could not generate farm explanation.",
         )
 
-    available_signals = 0
-    total_signals = 4
-
-    if weather.get("temperature") is not None:
-        available_signals += 1
-
-    if soil.get("ph") is not None:
-        available_signals += 1
-
-    if farm.get("crop"):
-        available_signals += 1
-
-    if satellite is not None:
-        available_signals += 1
-
-    confidence = round(
-        (available_signals / total_signals) * 100
-    )
+    input_coverage = {
+        "farmer_input": bool(
+            farm.get("crop")
+            or soil
+        ),
+        "weather": any(
+            weather.get(key) is not None
+            for key in (
+                "temperature",
+                "humidity",
+                "rain_probability",
+                "rainfall_forecast_mm",
+            )
+        ),
+        "satellite": satellite is not None,
+    }
 
     provenance = [
         {
@@ -175,16 +173,7 @@ def get_farm_explanation(
         "language": language,
         "explanation": explanation,
         "model": "Gemini",
-        "confidence": {
-            "score": confidence,
-            "level": (
-                "High"
-                if confidence >= 80
-                else "Medium"
-                if confidence >= 50
-                else "Low"
-            ),
-        },
+        "input_coverage": input_coverage,
         "provenance": provenance,
         "uncertainty": {
             "satellite_included": satellite is not None,

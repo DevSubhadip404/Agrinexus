@@ -1104,17 +1104,35 @@ function AnalysisPage() {
                         </h3>
                       </div>
 
-                      <div className="rounded-full border border-green-700 bg-green-950/40 px-4 py-2 text-sm font-semibold text-green-100">
-                        Input Coverage ·{" "}
-                        {advisoryData.confidence.score}%
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full border border-green-700 bg-green-950/40 px-3 py-2 text-xs font-semibold text-green-100">
+                          Farmer Input ·{" "}
+                          {advisoryData.input_coverage.farmer_input
+                            ? "Available"
+                            : "Unavailable"}
+                        </span>
+
+                        <span className="rounded-full border border-green-700 bg-green-950/40 px-3 py-2 text-xs font-semibold text-green-100">
+                          Weather ·{" "}
+                          {advisoryData.input_coverage.weather
+                            ? "Available"
+                            : "Unavailable"}
+                        </span>
+
+                        <span className="rounded-full border border-green-700 bg-green-950/40 px-3 py-2 text-xs font-semibold text-green-100">
+                          Satellite ·{" "}
+                          {advisoryData.input_coverage.satellite
+                            ? "Available"
+                            : "Unavailable"}
+                        </span>
                       </div>
                     </div>
 
 
                     <p className="mt-3 text-xs leading-5 text-green-200">
-                      This percentage represents the availability of expected
-                      advisory inputs. It is not a probability that the AI
-                      recommendation is correct.
+                      These indicators show which evidence sources were
+                      available to the advisory. They do not represent AI
+                      accuracy or prediction confidence.
                     </p>
 
 

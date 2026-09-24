@@ -1,8 +1,9 @@
 import { API_BASE_URL } from "../config"
 
-export type AdvisoryConfidence = {
-  score: number
-  level: "High" | "Medium" | "Low"
+export type AdvisoryInputCoverage = {
+  farmer_input: boolean
+  weather: boolean
+  satellite: boolean
 }
 
 export type AdvisoryProvenance = {
@@ -21,7 +22,7 @@ export type FarmExplanation = {
   language: string
   explanation: string
   model: string
-  confidence: AdvisoryConfidence
+  input_coverage: AdvisoryInputCoverage
   provenance: AdvisoryProvenance[]
   uncertainty: AdvisoryUncertainty
 }

@@ -25,6 +25,45 @@ export type AgriNModel = {
   stac_compatible: boolean
 }
 
+export type ModelExchangeRequest = {
+  model_id: string
+  target_country: string
+  target_crop: string
+}
+
+export type ModelExchangeResponse = {
+  exchange_id: string
+  source_node: {
+    country: string
+    country_code: string
+  }
+  target_context: {
+    country: string
+    crop: string
+  }
+  model: {
+    model_id: string
+    name: string
+    version: string
+    category: string
+    schema: string
+  }
+  compatibility: {
+    score: number
+    status: string
+    crop_match: boolean
+    same_country: boolean
+  }
+  provenance: {
+    provider: string
+    license: string
+    schema: string
+    stac_compatible: boolean
+  }
+  adaptation_notes: string[]
+  disclaimer: string
+}
+
 export async function getAgriNNodes(): Promise<AgriNNode[]> {
   const response = await fetch(
     `${API_BASE_URL}/api/agrin/nodes`
@@ -62,6 +101,27 @@ export async function getAgriNModel(
 
   if (!response.ok) {
     throw new Error("Could not load AgriN model")
+  }
+
+  return response.json()
+}
+
+export async function exchangeAgriNModel(
+  request: ModelExchangeRequest
+): Promise<ModelExchangeResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agrin/exchange`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Could not evaluate model exchange")
   }
 
   return response.json()

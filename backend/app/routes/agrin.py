@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 
 router = APIRouter(
@@ -121,6 +122,20 @@ MODELS = [
 ]
 
 
+class ModelExchangeRequest(BaseModel):
+    model_id: str
+    target_country: str
+    target_crop: str
+
+
+def find_model(model_id: str):
+    for model in MODELS:
+        if model["model_id"] == model_id:
+            return model
+
+    return None
+
+
 @router.get("/nodes")
 def get_nodes():
     return {
@@ -139,11 +154,108 @@ def get_models():
 
 @router.get("/models/{model_id}")
 def get_model(model_id: str):
-    for model in MODELS:
-        if model["model_id"] == model_id:
-            return model
+    model = find_model(model_id)
 
-    raise HTTPException(
-        status_code=404,
-        detail="AgriN model not found",
+    if not model:
+        raise HTTPException(
+            status_code=404,
+            detail="AgriN model not found",
+        )
+
+    return model
+
+
+@router.post("/exchange")
+def exchange_model(request: ModelExchangeRequest):
+    model = find_model(request.model_id)
+
+    if not model:
+        raise HTTPException(
+            status_code=404,
+            detail="AgriN model not found",
+        )
+
+    same_country = (
+        model["country"].lower()
+        == request.target_country.lower()
     )
+
+    same_crop = (
+        model["crop"].lower()
+        == request.target_crop.lower()
+    )
+
+    compatibility_score = 100
+    notes = []
+
+    if not same_country:
+        compatibility_score -= 20
+        notes.append(
+            "Model originates from a different agricultural region. "
+            "Local validation is recommended before production use."
+        )
+
+    if not same_crop:
+        compatibility_score -= 45
+        notes.append(
+            f"Model was trained for {model['crop']}, not "
+            f"{request.target_crop}. Crop-specific validation is required."
+        )
+
+    if model["stac_compatible"]:
+        notes.append(
+            "Geospatial metadata follows a STAC-compatible format."
+        )
+
+    if same_crop:
+        notes.append(
+            "Crop type matches the model's declared target crop."
+        )
+
+    if compatibility_score >= 80:
+        exchange_status = "Compatible"
+    elif compatibility_score >= 50:
+        exchange_status = "Review Required"
+    else:
+        exchange_status = "Not Recommended Without Adaptation"
+
+    return {
+        "exchange_id": (
+            f"{model['country_code'].lower()}-"
+            f"{request.target_country.lower().replace(' ', '-')}-"
+            f"{model['model_id']}"
+        ),
+        "source_node": {
+            "country": model["country"],
+            "country_code": model["country_code"],
+        },
+        "target_context": {
+            "country": request.target_country,
+            "crop": request.target_crop,
+        },
+        "model": {
+            "model_id": model["model_id"],
+            "name": model["name"],
+            "version": model["version"],
+            "category": model["category"],
+            "schema": model["schema"],
+        },
+        "compatibility": {
+            "score": compatibility_score,
+            "status": exchange_status,
+            "crop_match": same_crop,
+            "same_country": same_country,
+        },
+        "provenance": {
+            "provider": model["country"],
+            "license": model["license"],
+            "schema": model["schema"],
+            "stac_compatible": model["stac_compatible"],
+        },
+        "adaptation_notes": notes,
+        "disclaimer": (
+            "Compatibility is a prototype interoperability assessment. "
+            "Transferred agricultural models should be locally validated "
+            "before operational deployment."
+        ),
+    }

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import {
+  exchangeAgriNModel,
   getAgriNModels,
   getAgriNNodes,
   type AgriNModel,
   type AgriNNode,
+  type ModelExchangeResponse,
 } from "../services/agrinService"
 
 export default function AgriNCommonsPage() {
@@ -13,6 +15,14 @@ export default function AgriNCommonsPage() {
   const [countryFilter, setCountryFilter] = useState("All")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  const [selectedModelId, setSelectedModelId] = useState("")
+  const [targetCountry, setTargetCountry] = useState("India")
+  const [targetCrop, setTargetCrop] = useState("Rice")
+  const [exchangeLoading, setExchangeLoading] = useState(false)
+  const [exchangeError, setExchangeError] = useState("")
+  const [exchangeResult, setExchangeResult] =
+    useState<ModelExchangeResponse | null>(null)
 
   useEffect(() => {
     async function loadAgriNNetwork() {
@@ -27,6 +37,10 @@ export default function AgriNCommonsPage() {
 
         setNodes(nodeData)
         setModels(modelData)
+
+        if (modelData.length > 0) {
+          setSelectedModelId(modelData[0].model_id)
+        }
       } catch (err) {
         console.error(err)
         setError("Could not connect to the AgriN interoperability network.")
@@ -60,6 +74,31 @@ export default function AgriNCommonsPage() {
       return matchesCountry && matchesSearch
     })
   }, [models, search, countryFilter])
+
+  async function handleExchange() {
+    if (!selectedModelId || !targetCountry || !targetCrop) {
+      return
+    }
+
+    try {
+      setExchangeLoading(true)
+      setExchangeError("")
+      setExchangeResult(null)
+
+      const result = await exchangeAgriNModel({
+        model_id: selectedModelId,
+        target_country: targetCountry,
+        target_crop: targetCrop,
+      })
+
+      setExchangeResult(result)
+    } catch (err) {
+      console.error(err)
+      setExchangeError("Could not evaluate this model exchange.")
+    } finally {
+      setExchangeLoading(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -307,15 +346,191 @@ export default function AgriNCommonsPage() {
                   </article>
                 ))}
               </div>
+            </div>
 
-              {filteredModels.length === 0 && (
-                <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
-                  No AgriN models match your search.
+            <div className="mt-16 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.06] p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                Cross-country exchange
+              </p>
+
+              <h2 className="mt-3 text-3xl font-bold">
+                Test model portability
+              </h2>
+
+              <p className="mt-3 max-w-3xl text-slate-300">
+                Select a model from one AgriN node and evaluate whether its
+                declared crop and metadata are suitable for another agricultural
+                context.
+              </p>
+
+              <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                <div>
+                  <label className="mb-2 block text-sm text-slate-400">
+                    Shared model
+                  </label>
+
+                  <select
+                    value={selectedModelId}
+                    onChange={(event) =>
+                      setSelectedModelId(event.target.value)
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none"
+                  >
+                    {models.map((model) => (
+                      <option key={model.model_id} value={model.model_id}>
+                        {model.name} — {model.country}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-slate-400">
+                    Target country
+                  </label>
+
+                  <select
+                    value={targetCountry}
+                    onChange={(event) =>
+                      setTargetCountry(event.target.value)
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none"
+                  >
+                    <option value="India">India</option>
+                    <option value="Brazil">Brazil</option>
+                    <option value="South Africa">South Africa</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-slate-400">
+                    Target crop
+                  </label>
+
+                  <select
+                    value={targetCrop}
+                    onChange={(event) =>
+                      setTargetCrop(event.target.value)
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none"
+                  >
+                    <option value="Rice">Rice</option>
+                    <option value="Soybean">Soybean</option>
+                    <option value="Maize">Maize</option>
+                    <option value="Tomato">Tomato</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleExchange}
+                disabled={exchangeLoading}
+                className="mt-6 rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exchangeLoading
+                  ? "Evaluating exchange..."
+                  : "Evaluate Model Exchange"}
+              </button>
+
+              {exchangeError && (
+                <div className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+                  {exchangeError}
+                </div>
+              )}
+
+              {exchangeResult && (
+                <div className="mt-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500">
+                        INTEROPERABILITY ASSESSMENT
+                      </p>
+
+                      <h3 className="mt-2 text-2xl font-bold">
+                        {exchangeResult.model.name}
+                      </h3>
+
+                      <p className="mt-2 text-sm text-slate-400">
+                        {exchangeResult.source_node.country} →{" "}
+                        {exchangeResult.target_context.country}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-4 text-center">
+                      <p className="text-3xl font-bold text-emerald-300">
+                        {exchangeResult.compatibility.score}
+                      </p>
+                      <p className="text-xs uppercase tracking-wide text-emerald-400">
+                        Compatibility
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 rounded-xl bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Status
+                    </p>
+
+                    <p className="mt-1 font-semibold text-white">
+                      {exchangeResult.compatibility.status}
+                    </p>
+                  </div>
+
+                  <div className="mt-6">
+                    <p className="text-sm font-semibold text-slate-200">
+                      Adaptation notes
+                    </p>
+
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-400">
+                      {exchangeResult.adaptation_notes.map((note) => (
+                        <li key={note}>• {note}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl bg-white/5 p-4">
+                      <p className="text-slate-500">Crop match</p>
+                      <p className="mt-1">
+                        {exchangeResult.compatibility.crop_match
+                          ? "Yes"
+                          : "No"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/5 p-4">
+                      <p className="text-slate-500">Provider</p>
+                      <p className="mt-1">
+                        {exchangeResult.provenance.provider}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/5 p-4">
+                      <p className="text-slate-500">Schema</p>
+                      <p className="mt-1">
+                        {exchangeResult.provenance.schema}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-white/5 p-4">
+                      <p className="text-slate-500">Geospatial</p>
+                      <p className="mt-1">
+                        {exchangeResult.provenance.stac_compatible
+                          ? "STAC Compatible"
+                          : "Not Required"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-6 border-t border-white/10 pt-5 text-xs leading-5 text-slate-500">
+                    {exchangeResult.disclaimer}
+                  </p>
                 </div>
               )}
             </div>
 
-            <div className="mt-16 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.06] p-8">
+            <div className="mt-16 rounded-3xl border border-white/10 bg-white/[0.04] p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
                 Digital Public Good Prototype
               </p>

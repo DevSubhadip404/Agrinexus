@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from requests import RequestException
 
@@ -9,6 +11,8 @@ router = APIRouter(
     prefix="/api/farms",
     tags=["Weather"],
 )
+
+logger = logging.getLogger("uvicorn.error")
 
 
 @router.get("/{farm_id}/weather")
@@ -34,19 +38,18 @@ def get_farm_weather(farm_id: str):
         )
 
     except RequestException as error:
-        print(
-            "Open-Meteo request failed:",
-            repr(error),
+        logger.exception(
+            "Open-Meteo request failed"
         )
 
         if error.response is not None:
-            print(
-                "Open-Meteo status:",
+            logger.error(
+                "Open-Meteo status: %s",
                 error.response.status_code,
             )
 
-            print(
-                "Open-Meteo response:",
+            logger.error(
+                "Open-Meteo response: %s",
                 error.response.text[:500],
             )
 

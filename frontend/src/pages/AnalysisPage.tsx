@@ -154,6 +154,19 @@ function AnalysisPage() {
   }
 
 
+  const temperature =
+    weather?.temperature ?? null
+
+  const humidity =
+    weather?.humidity ?? null
+
+  const rainProbability =
+    weather?.rain_probability ?? null
+
+  const rainfallForecastMm =
+    weather?.rainfall_forecast_mm ?? null
+
+
   const recommendations: {
     type: string
     message: string
@@ -205,18 +218,18 @@ function AnalysisPage() {
   }
 
 
-  if (weather) {
-    if (weather.rain_probability >= 60) {
+  if (rainProbability !== null) {
+    if (rainProbability >= 60) {
       recommendations.push({
         type: "Live Weather Advisory",
         message:
-          `Rain probability is ${weather.rain_probability}%. Consider delaying irrigation and reassessing after rainfall.`,
+          `Rain probability is ${rainProbability}%. Consider delaying irrigation and reassessing after rainfall.`,
       })
     } else {
       recommendations.push({
         type: "Live Weather Advisory",
         message:
-          `Rain probability is ${weather.rain_probability}%. Monitor soil moisture before the next irrigation cycle.`,
+          `Rain probability is ${rainProbability}%. Monitor soil moisture before the next irrigation cycle.`,
       })
     }
   }
@@ -249,12 +262,12 @@ function AnalysisPage() {
 
   let diseaseRisk = "Unavailable"
 
-  if (weather) {
+  if (humidity !== null) {
     diseaseRisk =
-      weather.humidity >= 72 ||
+      humidity >= 72 ||
       farm.soil.moisture === "High"
         ? "High"
-        : weather.humidity >= 65
+        : humidity >= 65
           ? "Medium"
           : "Low"
   }
@@ -374,14 +387,16 @@ function AnalysisPage() {
                 Live Rain Probability
               </p>
 
-              {weather ? (
+              {rainProbability !== null ? (
                 <>
                   <p className="mt-2 text-3xl font-bold text-blue-600">
-                    {weather.rain_probability}%
+                    {rainProbability}%
                   </p>
 
                   <p className="mt-2 text-sm text-gray-600">
-                    {weather.rainfall_forecast_mm} mm forecast
+                    {rainfallForecastMm !== null
+                      ? `${rainfallForecastMm} mm forecast`
+                      : "Rainfall amount unavailable"}
                   </p>
                 </>
               ) : (
@@ -401,9 +416,9 @@ function AnalysisPage() {
                 {diseaseRisk}
               </p>
 
-              {weather && (
+              {temperature !== null && humidity !== null && (
                 <p className="mt-2 text-sm text-gray-600">
-                  {weather.temperature}°C · {weather.humidity}% humidity
+                  {temperature}°C · {humidity}% humidity
                 </p>
               )}
             </div>
